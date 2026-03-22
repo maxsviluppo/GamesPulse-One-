@@ -73,12 +73,87 @@ const getCategory = (item: NewsItem) => {
   const title = (item.title || '').toLowerCase();
   const content = (item.content || '').toLowerCase();
   
-  if (source === 'pushsquare' || source === 'ps_global' || title.includes('ps5') || title.includes('playstation') || title.includes('sony')) return 'playstation';
-  if (source === 'purexbox' || source === 'xbox_global' || title.includes('xbox') || title.includes('microsoft') || title.includes('series x')) return 'xbox';
-  if (source === 'nintendolife' || source === 'nintendo_it' || title.includes('nintendo') || title.includes('switch') || title.includes('mario')) return 'nintendo';
-  if (source === 'pcgamer' || title.includes('pc master race') || title.includes('steam') || title.includes('epic games')) return 'pc';
-  if (source === 'androidcentral' || source === 'macrumors' || title.includes('mobile') || title.includes('ios') || title.includes('android') || title.includes('iphone') || title.includes('smartphone')) return 'mobile';
-  if (source === 'theverge' || source === 'engadget' || source === 'hdblog' || source === 'digitalfoundry' || title.includes('gpu') || title.includes('cpu') || title.includes('hardware') || title.includes('tech') || title.includes('rtx') || title.includes('amd')) return 'tech';
+  // PlayStation
+  if (
+    source === 'pushsquare' || 
+    source === 'ps_global' || 
+    source === 'ign_it' || // IGN often has broad coverage but prioritize PS if titles match
+    title.includes('ps5') || 
+    title.includes('playstation') || 
+    title.includes('sony') ||
+    title.includes('dualview') ||
+    title.includes('god of war') ||
+    title.includes('horizon') ||
+    title.includes('the last of us')
+  ) return 'playstation';
+
+  // Xbox
+  if (
+    source === 'purexbox' || 
+    source === 'xbox_global' || 
+    title.includes('xbox') || 
+    title.includes('microsoft') || 
+    title.includes('series x') || 
+    title.includes('series s') ||
+    title.includes('halo') ||
+    title.includes('forza') ||
+    title.includes('game pass')
+  ) return 'xbox';
+
+  // Nintendo
+  if (
+    source === 'nintendolife' || 
+    source === 'nintendo_it' || 
+    title.includes('nintendo') || 
+    title.includes('switch') || 
+    title.includes('mario') || 
+    title.includes('zelda') || 
+    title.includes('pokemon') || 
+    title.includes('metroid')
+  ) return 'nintendo';
+
+  // PC
+  if (
+    source === 'pcgamer' || 
+    source === 'kotaku' || // Kotaku covers many, but often PC/General
+    title.includes('pc master race') || 
+    title.includes('steam') || 
+    title.includes('epic games') || 
+    title.includes('rtx') || 
+    title.includes('geforce') ||
+    title.includes('amd') ||
+    title.includes('keyboard') ||
+    title.includes('mouse')
+  ) return 'pc';
+
+  // Mobile
+  if (
+    source === 'androidcentral' || 
+    source === 'macrumors' || 
+    title.includes('mobile') || 
+    title.includes('ios') || 
+    title.includes('android') || 
+    title.includes('iphone') || 
+    title.includes('smartphone') ||
+    title.includes('app store') ||
+    title.includes('google play')
+  ) return 'mobile';
+
+  // Tech & Hardware
+  if (
+    source === 'theverge' || 
+    source === 'engadget' || 
+    source === 'hdblog' || 
+    source === 'digitalfoundry' || 
+    source === 'everyeye' || // IT broad, but often tech focused
+    title.includes('gpu') || 
+    title.includes('cpu') || 
+    title.includes('hardware') || 
+    title.includes('tech') || 
+    title.includes('ai') || 
+    title.includes('openai') || 
+    title.includes('chatgpt')
+  ) return 'tech';
   
   return 'general';
 };

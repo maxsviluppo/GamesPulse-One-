@@ -331,10 +331,11 @@ app.get("/api/news", async (req, res) => {
       return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
     });
     
-    const slicedNews = allNews.slice(0, 500);
-
-    // Deep search for missing images or videos in the top 100 items (increased from 60)
-    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 100);
+    // Limit metadata enhancement on Vercel to avoid 10s timeout
+    const isVercel = process.env.VERCEL === '1';
+    const enhanceLimit = isVercel ? 15 : 100; // Much lower limit for serverless functions
+    
+    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, enhanceLimit);
     if (newsToEnhance.length > 0) {
       await Promise.all(newsToEnhance.map(async (item) => {
         const meta = await fetchMetaInfo(item.link);
