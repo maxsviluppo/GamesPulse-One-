@@ -331,11 +331,19 @@ app.get("/api/news", async (req, res) => {
       return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
     });
     
-    // Limit metadata enhancement on Vercel to avoid 10s timeout
+    const slicedNews = allNews.slice(0, 500);
+
+    // ONLINE ON VERCEL: Disable slow metadata enhancement to prevent 504 Gateway Timeout (10s limit)
     const isVercel = process.env.VERCEL === '1';
-    const enhanceLimit = isVercel ? 15 : 100; // Much lower limit for serverless functions
-    
-    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, enhanceLimit);
+    if (isVercel) {
+      // Just return what we have quickly
+      newsCache = slicedNews;
+      lastFetchTime = Date.now();
+      return res.json(slicedNews);
+    }
+
+    // Local only deep enhancement
+    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 100);
     if (newsToEnhance.length > 0) {
       await Promise.all(newsToEnhance.map(async (item) => {
         const meta = await fetchMetaInfo(item.link);

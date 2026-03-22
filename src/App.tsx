@@ -514,6 +514,13 @@ export default function App() {
     try {
       const response = await fetch(`/api/news${force ? '?refresh=true' : ''}`);
       const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        console.error('Invalid news data format:', data);
+        setNews([]);
+        return;
+      }
+      
       const categorizedData = data.map((item: NewsItem) => ({
         ...item,
         category: getCategory(item)
