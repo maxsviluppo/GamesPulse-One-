@@ -347,6 +347,35 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [showCookieBanner, setShowCookieBanner] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashBg, setSplashBg] = useState('');
+
+  const SPLASH_BGS = [
+    'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1920&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1920&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1920&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1920&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920&auto=format&fit=crop'
+  ];
+
+  // Splash Screen Logic
+  useEffect(() => {
+    setSplashBg(SPLASH_BGS[Math.floor(Math.random() * SPLASH_BGS.length)]);
+    
+    // Ensure splash stays at least 3 seconds, but waits for loading to finish
+    const minTimePromise = new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // We'll hide it once BOTH loading is false AND 3 seconds have passed
+    // But since fetchNews is called immediately, we wait for it
+  }, []);
+
+  // Monitor loading to hide splash
+  useEffect(() => {
+    if (!loading && showSplash) {
+      const timer = setTimeout(() => setShowSplash(false), 500); // Small grace period
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   // Cookie Consent Check
   useEffect(() => {
@@ -586,7 +615,7 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-hidden relative">
       {/* Header - Integrated Top Bar */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-black/5 backdrop-blur-xl border-b border-white/10 px-6 py-4">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-black/1 backdrop-blur-xl border-b border-white/10 px-6 py-4">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tighter neon-text-blue italic drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
@@ -780,10 +809,24 @@ export default function App() {
         className="absolute inset-0 overflow-y-auto snap-y snap-mandatory hide-scrollbar h-full w-full z-0"
         onScroll={handleScroll}
       >
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
-            <div className="w-12 h-12 border-4 border-neon-blue border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,243,255,0.5)]"></div>
-            <p className="text-neon-blue font-mono text-xs animate-pulse tracking-widest">SYNCING DATA...</p>
+        {loading && filteredNews.length === 0 && !showSplash ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black overflow-hidden font-header z-50">
+            <motion.div 
+              className="absolute inset-0 bg-cover bg-center brightness-[0.2] blur-md scale-110"
+              style={{ backgroundImage: `url(${splashBg})` }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            />
+            <div className="relative z-10 flex flex-col items-center gap-6">
+              <motion.img 
+                src="/logocompleto.png" 
+                alt="GamesPulse Logo" 
+                className="w-48 drop-shadow-[0_0_20px_rgba(0,194,255,0.4)]"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+              />
+              <span className="text-neon-blue font-bold uppercase tracking-[0.3em] text-[10px] animate-pulse">Syncing Intel...</span>
+            </div>
           </div>
         ) : (
           <div className="h-full">
