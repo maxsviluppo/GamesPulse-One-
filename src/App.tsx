@@ -24,7 +24,10 @@ import {
   Share2,
   Send,
   LogOut,
-  LogIn
+  LogIn,
+  ShieldCheck,
+  Globe,
+  Info
 } from 'lucide-react';
 import { 
   auth, 
@@ -342,6 +345,17 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [showCookieBanner, setShowCookieBanner] = useState(false);
+
+  // Cookie Consent Check
+  useEffect(() => {
+    const consent = localStorage.getItem('cookieConsent');
+    if (!consent) {
+      const timer = setTimeout(() => setShowCookieBanner(true), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Auth and Firestore Sync
   useEffect(() => {
@@ -502,6 +516,16 @@ export default function App() {
         <img src={user.photoURL || ''} className="w-5 h-5 rounded-full" referrerPolicy="no-referrer" />
       ) : <User size={20} />, 
       action: user ? () => {} : signInWithGoogle 
+    },
+    { 
+      id: 'privacy', 
+      label: 'Privacy & Legal', 
+      icon: <ShieldCheck size={20} />, 
+      action: () => {
+        setIsInfoOpen(true);
+        setIsMenuOpen(false);
+        setIsSettingsOpen(false);
+      } 
     },
     { id: 'share', label: 'Condividi', icon: <Share2 size={20} />, action: handleShare },
     { id: 'send', label: 'Invia ad un amico', icon: <Send size={20} />, action: handleSend },
@@ -810,6 +834,137 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Info Modal */}
+      <AnimatePresence>
+        {isInfoOpen && (
+          <motion.div
+            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            animate={{ opacity: 1, backdropFilter: 'blur(10px)' }}
+            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-2xl max-h-[85vh] bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              <div className="p-6 md:p-8 flex items-center justify-between border-b border-white/5 bg-zinc-900/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-neon-blue/20 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-neon-blue" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white uppercase tracking-tighter">Info & Privacy</h3>
+                </div>
+                <button 
+                  onClick={() => setIsInfoOpen(false)}
+                  className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-6 h-6 text-white/40" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 scroll-smooth focus-visible:outline-none bg-zinc-950 no-scrollbar">
+                <section>
+                  <h4 className="text-neon-blue font-bold uppercase text-[10px] tracking-widest mb-4 opacity-80">Informazioni Legali</h4>
+                  <div className="space-y-4 text-white/60 text-sm leading-relaxed font-medium">
+                    <p>
+                      <strong className="text-white">GamesPulse</strong> è un'applicazione ideata e progettata da <strong className="text-white">Castro Massimo</strong>, responsabile del trattamento e della conservazione dei dati personali.
+                    </p>
+                    <p>
+                      Email di contatto: <a href="mailto:castromassimo@gmail.com" className="text-neon-blue hover:underline">castromassimo@gmail.com</a>
+                    </p>
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-neon-blue font-bold uppercase text-[10px] tracking-widest mb-4 opacity-80">GDPR & Privacy</h4>
+                  <div className="space-y-4 text-white/60 text-sm leading-relaxed font-medium">
+                    <p>
+                      I dati degli utenti (preferiti e profili) sono conservati esclusivamente presso i server protetti di <strong className="text-white">Firebase (Google Cloud)</strong> nel pieno rispetto delle normative vigenti.
+                    </p>
+                    <p>
+                      Il periodo di conservazione dei dati è limitato al tempo strettamente necessario per l'erogazione del servizio o come previsto dalle norme di legge sulla conservazione dei dati digitali.
+                    </p>
+                    <p>
+                      Gli utenti hanno il diritto in qualsiasi momento di richiedere la visione, la modifica o la cancellazione dei propri dati scrivendo all'indirizzo email sopra indicato.
+                    </p>
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-neon-blue font-bold uppercase text-[10px] tracking-widest mb-4 opacity-80">Cookie Policy</h4>
+                  <div className="space-y-4 text-white/60 text-sm leading-relaxed font-medium">
+                    <p>
+                      Utilizziamo esclusivamente cookie tecnici necessari al corretto funzionamento dell'app e alla memorizzazione delle tue preferenze di sessione.
+                    </p>
+                  </div>
+                </section>
+              </div>
+
+              <div className="p-6 bg-zinc-900/50 text-center border-t border-white/5">
+                <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">GamesPulse App © 2026 - Versione 1.0.0</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cookie Banner */}
+      <AnimatePresence>
+        {showCookieBanner && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-6 right-6 md:left-auto md:right-10 md:w-96 z-[400]"
+          >
+            <div className="bg-zinc-950/95 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl flex flex-col gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-neon-blue/10 flex items-center justify-center shrink-0">
+                  <Globe className="w-5 h-5 text-neon-blue" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-white/80 font-medium leading-normal">
+                    Utilizziamo i cookie per migliorare la tua esperienza su GamesPulse. <button onClick={() => {setIsInfoOpen(true); setIsMenuOpen(false);}} className="text-neon-blue underline underline-offset-4 hover:text-neon-blue/80">Leggi la Privacy</button>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => {
+                    localStorage.setItem('cookieConsent', 'accepted');
+                    setShowCookieBanner(false);
+                  }}
+                  className="flex-1 px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 text-black rounded-lg text-xs font-bold uppercase tracking-widest transition-colors"
+                >
+                  Accetto
+                </button>
+                <button 
+                  onClick={() => {
+                    localStorage.setItem('cookieConsent', 'rejected');
+                    setShowCookieBanner(false);
+                  }}
+                  className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors"
+                >
+                  Rifiuto
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}} />
     </div>
   );
 }
