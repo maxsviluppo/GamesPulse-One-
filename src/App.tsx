@@ -944,6 +944,27 @@ export default function App() {
                     </p>
                   </div>
                 </section>
+
+                <section className="pt-4 border-t border-white/5">
+                  <h4 className="text-neon-blue font-bold uppercase text-[10px] tracking-widest mb-6 opacity-80">Altre App Consigliate</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <a 
+                      href="https://www.spotsmart.it" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="group relative bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 transition-all hover:bg-white/10 hover:border-neon-blue/30 active:scale-95"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-black/40 overflow-hidden flex items-center justify-center p-1 border border-white/5 group-hover:border-neon-blue/20 transition-colors">
+                        <img src="/spotsmart.png" alt="SpotSmart" className="w-full h-full object-contain drop-shadow-lg" />
+                      </div>
+                      <div className="flex-1">
+                        <h5 className="text-sm font-bold text-white group-hover:text-neon-blue transition-colors uppercase tracking-tight">SpotSmart IT</h5>
+                        <p className="text-[10px] text-white/40 font-medium">News & Lifestyle Intel</p>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-white/20 group-hover:text-neon-blue transition-colors" />
+                    </a>
+                  </div>
+                </section>
               </div>
 
               <div className="p-6 bg-zinc-900/50 text-center border-t border-white/5">
