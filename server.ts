@@ -114,28 +114,42 @@ function extractImage(item: any) {
 }
 
 function extractVideo(item: any) {
-  const content = item.content || item["content:encoded"] || item.description || "";
+  const content = (item.content || item["content:encoded"] || item.description || "").toLowerCase();
   
-  // YouTube RSS specific (yt:videoId)
+  // 1. Explicit YouTube/Vimeo tags
   if (item['yt:videoId']) return `https://www.youtube.com/embed/${item['yt:videoId']}`;
   if (item.id && item.id.startsWith('yt:video:')) return `https://www.youtube.com/embed/${item.id.replace('yt:video:', '')}`;
 
-  // YouTube Embeds in content
-  const ytMatch = content.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  // 2. YouTube Embeds in content (improved regex)
+  const ytMatch = content.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
   
-  // Vimeo Embeds
+  // 3. Vimeo Embeds
   const vimeoMatch = content.match(/https?:\/\/player\.vimeo\.com\/video\/(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
 
-  // Direct MP4
-  const mp4Match = content.match(/https?:\/\/[^"'>]+\.mp4/);
-  if (mp4Match) return mp4Match[0];
+  // 4. iframe sources
+  const iframeMatch = content.match(/<iframe[^>]+src=["']([^"']+)["']/);
+  if (iframeMatch) {
+    const src = iframeMatch[1];
+    if (src.includes('youtube.com') || src.includes('youtu.be')) {
+      const ytId = src.match(/(?:v=|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+      if (ytId) return `https://www.youtube.com/embed/${ytId}`;
+    }
+    if (src.includes('vimeo.com')) {
+      const vimeoId = src.match(/vimeo\.com\/(?:video\/)?(\d+)/)?.[1];
+      if (vimeoId) return `https://player.vimeo.com/video/${vimeoId}`;
+    }
+  }
 
-  // Media:content with video type
+  // 5. Direct Video Files
+  const videoFileMatch = content.match(/https?:\/\/[^"'>]+\.(mp4|webm|ogg)/);
+  if (videoFileMatch) return videoFileMatch[0];
+
+  // 6. Media:content
   if (item["media:content"]) {
     const media = Array.isArray(item["media:content"]) ? item["media:content"] : [item["media:content"]];
-    const video = media.find((m: any) => m.$ && (m.$.type?.includes('video') || m.$.medium === 'video'));
+    const video = media.find((m: any) => m.$ && (m.$.type?.includes('video') || m.$.medium === 'video' || m.$.url?.match(/\.(mp4|webm|ogg)$/)));
     if (video && video.$.url) return video.$.url;
   }
 
@@ -170,7 +184,15 @@ async function fetchMetaInfo(url: string) {
                 $('meta[property="og:video:secure_url"]').attr('content') ||
                 $('meta[property="og:video"]').attr('content') ||
                 $('meta[name="twitter:player"]').attr('content') ||
-                $('meta[property="og:video:iframe"]').attr('content');
+                $('meta[property="og:video:iframe"]').attr('content') ||
+                $('meta[name="twitter:player:stream"]').attr('content') ||
+                $('link[rel="alternate"][type="application/json+oembed"]').attr('href');
+
+    // If we found an oembed link, we could theoretically fetch it, but lets stick to simple meta for now
+    // Add check for raw <video> tags in the page if desperate
+    if (!video) {
+      video = $('video source').attr('src') || $('video').attr('src');
+    }
 
     // Handle YouTube links in meta tags
     if (video && (video.includes('youtube.com') || video.includes('youtu.be'))) {
@@ -353,7 +375,7 @@ app.get("/api/news", async (req, res) => {
     }
 
     // Local only deep enhancement
-    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 100);
+    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 20);
     if (newsToEnhance.length > 0) {
       await Promise.all(newsToEnhance.map(async (item) => {
         const meta = await fetchMetaInfo(item.link);
@@ -367,7 +389,6 @@ app.get("/api/news", async (req, res) => {
         // Final fallback for images if still null
         if (!item.image) {
           const keywords = ['gaming', 'videogames', 'console', 'ps5', 'xbox', 'nintendo'];
-          const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
           item.image = `https://picsum.photos/seed/${encodeURIComponent(item.title.substring(0, 10))}/800/450`;
         }
       }));

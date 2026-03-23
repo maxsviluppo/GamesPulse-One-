@@ -227,15 +227,28 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[130px] overflow-hidden bg-black">
-            {item.video.includes('embed') ? (
-              <iframe
-                src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
-                className="w-full h-full scale-[1.5] pointer-events-none brightness-[1.3] contrast-[1.1]"
-                allow="autoplay; encrypted-media"
-                title={item.title}
-                onError={() => setVideoError(true)}
-              />
+          <div className="absolute top-0 left-0 right-0 bottom-[180px] overflow-hidden bg-black">
+            {item.video.includes('embed') || item.video.includes('youtube') || item.video.includes('vimeo') ? (
+              (() => {
+                const base = item.video;
+                let finalUrl = base;
+                if (base.includes('youtube.com') || base.includes('youtu.be')) {
+                  const videoId = (base.split('/').pop() || '').split('?')[0];
+                  finalUrl = `${base}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&origin=${window.location.origin}`;
+                } else if (base.includes('vimeo.com')) {
+                  finalUrl = `${base}?autoplay=1&muted=1&loop=1&background=1`;
+                }
+                
+                return (
+                  <iframe
+                    src={finalUrl}
+                    className="w-full h-full scale-[1.5] pointer-events-none brightness-[1.5] contrast-[1.2] saturate-[1.3]"
+                    allow="autoplay; encrypted-media"
+                    title={item.title}
+                    onError={() => setVideoError(true)}
+                  />
+                );
+              })()
             ) : (
               <video
                 src={item.video}
@@ -243,7 +256,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
                 muted
                 loop
                 playsInline
-                className="w-full h-full object-cover brightness-[1.3] contrast-[1.1]"
+                className="w-full h-full object-cover brightness-[1.5] contrast-[1.2] saturate-[1.3]"
                 onError={() => setVideoError(true)}
               />
             )}
@@ -255,11 +268,11 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[130px] overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 bottom-[180px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100 brightness-125"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100 brightness-[1.4] saturate-[1.2] contrast-[1.1]"
               referrerPolicy="no-referrer"
               onError={() => setImageError(true)}
             />
@@ -270,7 +283,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-0 left-0 right-0 bottom-[130px] bg-zinc-900/80">
+          <div className="absolute top-0 left-0 right-0 bottom-[180px] bg-zinc-900/80">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
