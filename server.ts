@@ -211,6 +211,16 @@ app.get("/api/proxy", async (req, res) => {
     const baseUrl = new URL(url).origin;
     const baseTag = `<base href="${baseUrl}/">`;
     
+    // Engadget and Yahoo sites often use Next.js/React which crashes when proxied due to CORS on their internal APIs
+    // We strip their scripts and Next.js data to prevent the "Application error" crash
+    if (url.includes('engadget.com') || url.includes('yahoo.com') || url.includes('techcrunch.com')) {
+      // Remove all scripts and Next.js specific JSON data
+      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+      html = html.replace(/<link rel="preload" as="script" [^>]*>/gi, '');
+      html = html.replace(/<next-route-announcer>[\s\S]*?<\/next-route-announcer>/gi, '');
+    }
+
     if (html.includes("<head>")) {
       html = html.replace("<head>", `<head>${baseTag}`);
     } else {
@@ -374,7 +384,7 @@ app.get("/api/news", async (req, res) => {
 export default app;
 
 async function startServer() {
-  const PORT = 3000;
+  const PORT = 3010;
   
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

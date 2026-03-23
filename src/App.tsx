@@ -795,7 +795,13 @@ export default function App() {
                       boxShadow: `0 0 25px ${cat.color}`
                     } : {}}
                   >
-                    {cat.icon}
+                    {cat.id === 'favorites' ? (
+                      <Heart 
+                        size={20} 
+                        fill={selectedCategory === 'favorites' ? 'white' : 'none'} 
+                        className={selectedCategory === 'favorites' ? 'text-white' : ''} 
+                      />
+                    ) : cat.icon}
                   </div>
                 </motion.button>
               ))}
