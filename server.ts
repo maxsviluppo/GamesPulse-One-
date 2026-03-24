@@ -73,11 +73,10 @@ function extractImage(item: any) {
   }
   
   // 2. Media Content / Thumbnail
-  const mediaTags = ["media:content", "media:thumbnail", "media:group", "image", "enclosure", "thumb"];
+  const mediaTags = ["media:content", "media:thumbnail", "media:group", "image", "enclosure", "thumb", "media:description"];
   for (const tag of mediaTags) {
     const content = item[tag];
     if (content) {
-      // Handle array (like media:content)
       if (Array.isArray(content)) {
         const firstWithUrl = content.find((c: any) => {
           const url = c.$?.url || c.url || (typeof c === 'string' ? c : null);
@@ -85,27 +84,24 @@ function extractImage(item: any) {
         });
         if (firstWithUrl) return firstWithUrl.$?.url || firstWithUrl.url || (typeof firstWithUrl === 'string' ? firstWithUrl : null);
       }
-      
-      // Handle object with $ (attributes)
       if (content.$ && content.$.url) {
         if (content.$.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.$.url;
       }
-      
-      // Handle direct url property
       if (content.url && content.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.url;
-      
-      // Handle string
       if (typeof content === 'string' && content.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content;
     }
   }
   
   // 3. Content/Description Regex (Improved)
-  const content = item.content || item["content:encoded"] || item.description || "";
-  const imgMatches = content.matchAll(/<img[^>]+(?:src|data-src|srcset)="([^"> ]+)"/g);
+  const fullContent = item.content || item["content:encoded"] || item.description || "";
+  
+  // Try to find the largest image or first good one
+  const imgMatches = [...fullContent.matchAll(/<img[^>]+(?:src|data-src|srcset|original-src)=["']([^"'>\s]+)["']/gi)];
   for (const match of imgMatches) {
     const url = match[1];
-    // Filter out small icons or trackers
-    if (!url.includes('pixel') && !url.includes('analytics') && !url.includes('doubleclick') && !url.includes('spacer')) {
+    if (!url.includes('pixel') && !url.includes('analytics') && !url.includes('doubleclick') && !url.includes('spacer') && !url.includes('icon')) {
+      // Prioritize high-res images (often have 'large', 'high', 'fit' in URL)
+      if (url.includes('large') || url.includes('quality') || url.includes('width=1200')) return url;
       return url;
     }
   }
@@ -114,44 +110,65 @@ function extractImage(item: any) {
 }
 
 function extractVideo(item: any) {
-  const content = (item.content || item["content:encoded"] || item.description || "").toLowerCase();
-  
-  // 1. Explicit YouTube/Vimeo tags
+  // Special filter for Engadget: their RSS often contains broken Yahoo/AOL video players
+  if (item.source === 'ENGADGET' || (item.link && item.link.includes('engadget.com'))) {
+    // Only allow YouTube/Vimeo for Engadget, block internal players that fail CORS
+    if (content.includes('youtube.com') || content.includes('youtu.be') || content.includes('vimeo.com') || item['yt:videoId']) {
+      // proceed
+    } else {
+      return null;
+    }
+  }
+
+  // 1. Explicit YouTube/Vimeo tags from various providers
   if (item['yt:videoId']) return `https://www.youtube.com/embed/${item['yt:videoId']}`;
   if (item.id && item.id.startsWith('yt:video:')) return `https://www.youtube.com/embed/${item.id.replace('yt:video:', '')}`;
+  
+  // Custom metadata from some platforms
+  const mediaTags = ["media:content", "media:thumbnail", "media:group", "enclosure", "video"];
+  for (const tag of mediaTags) {
+    const data = item[tag];
+    if (data) {
+      const array = Array.isArray(data) ? data : [data];
+      const video = array.find((m: any) => {
+        const type = m.$?.type || m.type || "";
+        const medium = m.$?.medium || m.medium || "";
+        const url = m.$?.url || m.url || (typeof m === 'string' ? m : "");
+        return type.includes('video') || medium === 'video' || url.match(/\.(mp4|webm|ogg|m4v)/i) || url.includes('youtube.com/embed');
+      });
+      if (video) {
+        let url = video.$?.url || video.url || (typeof video === 'string' ? video : null);
+        if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+           const ytId = url.match(/(?:v=|embed\/|youtu\.be\/|v\/)([a-zA-Z0-9_-]{11})/)?.[1];
+           if (ytId) return `https://www.youtube.com/embed/${ytId}`;
+        }
+        if (url) return url;
+      }
+    }
+  }
 
-  // 2. YouTube Embeds in content (improved regex)
-  const ytMatch = content.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/);
+  // 2. YouTube Embeds/Links in content (extended regex)
+  const ytMatch = content.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
   
-  // 3. Vimeo Embeds
-  const vimeoMatch = content.match(/https?:\/\/player\.vimeo\.com\/video\/(\d+)/);
+  // 3. Vimeo Embeds/Links
+  const vimeoMatch = content.match(/https?:\/\/(?:www\.)?(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
 
-  // 4. iframe sources
+  // 4. iframe sources (general catch)
   const iframeMatch = content.match(/<iframe[^>]+src=["']([^"']+)["']/);
   if (iframeMatch) {
-    const src = iframeMatch[1];
+    let src = iframeMatch[1];
     if (src.includes('youtube.com') || src.includes('youtu.be')) {
       const ytId = src.match(/(?:v=|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
       if (ytId) return `https://www.youtube.com/embed/${ytId}`;
     }
-    if (src.includes('vimeo.com')) {
-      const vimeoId = src.match(/vimeo\.com\/(?:video\/)?(\d+)/)?.[1];
-      if (vimeoId) return `https://player.vimeo.com/video/${vimeoId}`;
-    }
+    return src;
   }
 
   // 5. Direct Video Files
-  const videoFileMatch = content.match(/https?:\/\/[^"'>]+\.(mp4|webm|ogg)/);
+  const videoFileMatch = content.match(/https?:\/\/[^"'>\s]+\.(mp4|webm|ogg|m4v)/i);
   if (videoFileMatch) return videoFileMatch[0];
-
-  // 6. Media:content
-  if (item["media:content"]) {
-    const media = Array.isArray(item["media:content"]) ? item["media:content"] : [item["media:content"]];
-    const video = media.find((m: any) => m.$ && (m.$.type?.includes('video') || m.$.medium === 'video' || m.$.url?.match(/\.(mp4|webm|ogg)$/)));
-    if (video && video.$.url) return video.$.url;
-  }
 
   return null;
 }

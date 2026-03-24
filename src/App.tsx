@@ -227,14 +227,17 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[180px] overflow-hidden bg-black">
+          <div className="absolute top-[10%] left-[10%] right-[10%] bottom-[230px] overflow-hidden bg-black rounded-3xl">
             {item.video.includes('embed') || item.video.includes('youtube') || item.video.includes('vimeo') ? (
               (() => {
-                const base = item.video;
+                const base = item.video || '';
                 let finalUrl = base;
                 if (base.includes('youtube.com') || base.includes('youtu.be')) {
-                  const videoId = (base.split('/').pop() || '').split('?')[0];
-                  finalUrl = `${base}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&origin=${window.location.origin}`;
+                  let videoId = (base.split('/').pop() || '').split('?')[0];
+                  if (base.includes('watch?v=')) {
+                    videoId = new URL(base).searchParams.get('v') || videoId;
+                  }
+                  finalUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&origin=${window.location.origin}`;
                 } else if (base.includes('vimeo.com')) {
                   finalUrl = `${base}?autoplay=1&muted=1&loop=1&background=1`;
                 }
@@ -261,29 +264,24 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               />
             )}
             <div className="absolute inset-0 bg-transparent"></div>
-            {/* Vignette Effect - Reduced for videos */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.3)_100%)]"></div>
-            {/* Multi-layered gradient for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/95"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[180px] overflow-hidden">
+          <div className="absolute top-[10%] left-[10%] right-[10%] bottom-[230px] overflow-hidden rounded-3xl">
             <img 
               src={item.image} 
               alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100 brightness-[1.4] saturate-[1.2] contrast-[1.1]"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100 brightness-[1.5] saturate-[1.3] contrast-[1.1]"
               referrerPolicy="no-referrer"
               onError={() => setImageError(true)}
             />
-            {/* Vignette Effect */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_30%,_rgba(0,0,0,0.5)_100%)]"></div>
+            {/* Vignette Effect - Increased center brightness */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.15)_0%,_transparent_45%,_rgba(0,0,0,0.65)_100%)]"></div>
             {/* Multi-layered gradient for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/95"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/95"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-0 left-0 right-0 bottom-[180px] bg-zinc-900/80">
+            <div className="absolute top-[5%] left-[5%] right-[5%] bottom-[230px] bg-zinc-900/80 rounded-3xl">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -361,6 +359,7 @@ export default function App() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [showCookieBanner, setShowCookieBanner] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [newsLoading, setNewsLoading] = useState(true);
   const [splashBg, setSplashBg] = useState('');
 
   const SPLASH_BGS = [
@@ -376,19 +375,20 @@ export default function App() {
     setSplashBg(SPLASH_BGS[Math.floor(Math.random() * SPLASH_BGS.length)]);
     
     // Ensure splash stays at least 3 seconds, but waits for loading to finish
-    const minTimePromise = new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // We'll hide it once BOTH loading is false AND 3 seconds have passed
-    // But since fetchNews is called immediately, we wait for it
+    // Ensure splash stays at least 3s
+    const timer = setTimeout(() => {
+      // Logic handled by combined loading effect
+    }, 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Monitor loading to hide splash
   useEffect(() => {
-    if (!loading && showSplash) {
-      const timer = setTimeout(() => setShowSplash(false), 500); // Small grace period
+    if (!loading && !newsLoading) {
+      const timer = setTimeout(() => setShowSplash(false), 800);
       return () => clearTimeout(timer);
     }
-  }, [loading]);
+  }, [loading, newsLoading]);
 
   // Cookie Consent Check
   useEffect(() => {
@@ -596,6 +596,7 @@ export default function App() {
       console.error('Error fetching news:', error);
     } finally {
       setLoading(false);
+      setNewsLoading(false);
     }
   };
 
@@ -828,23 +829,35 @@ export default function App() {
         className="absolute inset-0 overflow-y-auto snap-y snap-mandatory hide-scrollbar h-full w-full z-0"
         onScroll={handleScroll}
       >
-        {loading && filteredNews.length === 0 && !showSplash ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black overflow-hidden font-header z-50">
+        {(showSplash || (loading && filteredNews.length === 0)) ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black overflow-hidden font-header z-[100]">
             <motion.div 
-              className="absolute inset-0 bg-cover bg-center brightness-[0.2] blur-md scale-110"
+              className="absolute inset-0 bg-cover bg-center brightness-[0.1] blur-xl scale-110"
               style={{ backgroundImage: `url(${splashBg})` }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             />
-            <div className="relative z-10 flex flex-col items-center gap-6">
-              <motion.img 
-                src="/logocompleto.png" 
-                alt="GamesPulse Logo" 
-                className="w-48 drop-shadow-[0_0_20px_rgba(0,194,255,0.4)]"
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-              />
-              <span className="text-neon-blue font-bold uppercase tracking-[0.3em] text-[10px] animate-pulse">Syncing Intel...</span>
+            <div className="relative z-10 flex flex-col items-center gap-10">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8 }}
+                className="flex flex-col items-center gap-6"
+              >
+                <img 
+                  src="/logocompleto.png" 
+                  alt="GamesPulse Logo" 
+                  className="w-72 md:w-96 drop-shadow-[0_0_30px_rgba(0,194,255,0.3)]"
+                />
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-neon-blue animate-pulse"></div>
+                    <span className="text-neon-blue font-bold uppercase tracking-[0.4em] text-[12px]">caricamento notizie</span>
+                    <div className="w-2 h-2 rounded-full bg-neon-blue animate-pulse [animation-delay:0.2s]"></div>
+                  </div>
+                  <div className="w-48 h-[1px] bg-gradient-to-r from-transparent via-neon-blue/30 to-transparent mt-2"></div>
+                </div>
+              </motion.div>
             </div>
           </div>
         ) : (
