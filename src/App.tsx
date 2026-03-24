@@ -27,7 +27,20 @@ import {
   LogIn,
   ShieldCheck,
   Globe,
-  Info
+  Info,
+  Shield,
+  Clock,
+  Activity,
+  Users,
+  TrendingUp,
+  BarChart3,
+  Check,
+  AlertCircle,
+  Database,
+  Plus,
+  Trash2,
+  Save,
+  FileText
 } from 'lucide-react';
 import { 
   auth, 
@@ -264,10 +277,10 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               />
             )}
             <div className="absolute inset-0 bg-transparent"></div>
-            {/* Vignette - Increased top, decreased bottom */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/20 via-transparent to-black/75"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent"></div>
-            <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/60 to-transparent"></div>
+            {/* Vignette - Reduced bottom by 15% (80% top, 55% bottom) */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 via-transparent to-black/55"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent"></div>
+            <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/55 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
           <div className="absolute top-[10%] left-0 right-0 bottom-[230px] overflow-hidden">
@@ -280,11 +293,11 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             />
             {/* Vignette Effect - Increased center brightness */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.15)_0%,_transparent_45%,_rgba(0,0,0,0.65)_100%)]"></div>
-            {/* Multi-layered gradient - Updated Top 85%, Bottom 75% */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/20 via-transparent to-black/75"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent"></div>
+            {/* Multi-layered gradient - Reduced bottom by 15% (80% top, 55% bottom) */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 via-transparent to-black/55"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent"></div>
             {/* Additional Top Vignette Edge */}
-            <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/60 to-transparent"></div>
+            <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/55 to-transparent"></div>
           </div>
         ) : (
             <div className="absolute top-[10%] left-0 right-0 bottom-[230px] bg-zinc-900/80">
@@ -350,6 +363,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
 
 export default function App() {
   const [news, setNews] = useState<NewsItem[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -367,6 +381,20 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [newsLoading, setNewsLoading] = useState(true);
   const [splashBg, setSplashBg] = useState('');
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [seoConfigs, setSeoConfigs] = useState<any>({});
+  const [realTraffic, setRealTraffic] = useState<any>({ total: 0, today: 0 });
+  const [newsSources, setNewsSources] = useState<any[]>([]);
+  const [newSource, setNewSource] = useState({ name: '', url: '', cat: 'News' });
+  const [adsenseConfig, setAdsenseConfig] = useState<any>({ enabled: false, script: '', adsTxt: '', metaTag: '' });
+  const [isSavingAdsense, setIsSavingAdsense] = useState(false);
+  const [adminTab, setAdminTab] = useState('seo');
+  const [saveStatus, setSaveStatus] = useState<{type: 'success' | 'error' | null, message: string}>({ type: null, message: '' });
 
   const SPLASH_BGS = [
     'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1920&auto=format&fit=crop',
@@ -404,6 +432,11 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, []);
+
+  const handleCookieConsent = (accepted: boolean) => {
+    localStorage.setItem('cookieConsent', accepted ? 'accepted' : 'rejected');
+    setShowCookieBanner(false);
+  };
 
   // Auth and Firestore Sync
   useEffect(() => {
@@ -485,11 +518,121 @@ export default function App() {
     }
   };
 
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminUsername === 'admin' && adminPassword === 'accessometti') {
+      setIsAdminLoggedIn(true);
+      setShowAdminLogin(false);
+      setShowAdminDashboard(true);
+      setAdminError('');
+    } else {
+      setAdminError('Access Denied: Incorrect Credentials');
+    }
+  };
+
+  const saveSeoConfig = async (category: string, data: any) => {
+    try {
+      const response = await fetch('/api/admin/seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          auth: { username: 'admin', password: 'accessometti' },
+          category,
+          data
+        })
+      });
+      if (response.ok) {
+        setSaveStatus({ type: 'success', message: 'Configurazione SEO salvata con successo!' });
+        setTimeout(() => setSaveStatus({ type: null, message: '' }), 3000);
+      }
+    } catch (e) {
+      setSaveStatus({ type: 'error', message: 'Errore durante il salvataggio.' });
+    }
+  };
+
+  const fetchAdminData = async () => {
+    try {
+      const [seoRes, trafficRes, sourcesRes, adsRes] = await Promise.all([
+        fetch('/api/admin/seo'),
+        fetch('/api/admin/traffic'),
+        fetch('/api/admin/sources'),
+        fetch('/api/admin/adsense')
+      ]);
+      setSeoConfigs(await seoRes.json());
+      setRealTraffic(await trafficRes.json());
+      setNewsSources(await sourcesRes.json());
+      setAdsenseConfig(await adsRes.json());
+    } catch (e) {}
+  };
+
+  const saveSources = async (sources: any[]) => {
+    try {
+      await fetch('/api/admin/sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auth: { username: 'admin', password: 'accessometti' }, sources })
+      });
+      setSaveStatus({ type: 'success', message: 'Fonti RSS aggiornate!' });
+      setTimeout(() => setSaveStatus({ type: null, message: '' }), 3000);
+    } catch (e) {}
+  };
+
+  const saveAdSense = async (data: any) => {
+    setIsSavingAdsense(true);
+    try {
+      await fetch('/api/admin/adsense', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auth: { username: 'admin', password: 'accessometti' }, data })
+      });
+      setSaveStatus({ type: 'success', message: 'Configurazione AdSense salvata!' });
+      setTimeout(() => setSaveStatus({ type: null, message: '' }), 3000);
+    } catch (e) {}
+    setIsSavingAdsense(false);
+  };
+
+  const addSource = () => {
+    if (!newSource.name || !newSource.url) return;
+    const updated = [...newsSources, { ...newSource, id: Math.random().toString() }];
+    setNewsSources(updated);
+    saveSources(updated);
+    setNewSource({ name: '', url: '', cat: 'News' });
+  };
+
+  const deleteSource = (id: string) => {
+    const updated = newsSources.filter(s => s.id !== id);
+    setNewsSources(updated);
+    saveSources(updated);
+  };
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{show: boolean, id: string, name: string} | null>(null);
+
+  const confirmDelete = (id: string, name: string) => {
+    setDeleteConfirm({ show: true, id, name });
+  };
+
+  const handleToggleSource = (id: string) => {
+    const updated = newsSources.map(s => 
+      s.id === id ? { ...s, active: s.active === false ? true : false } : s
+    );
+    setNewsSources(updated);
+    saveSources(updated);
+  };
+
+  useEffect(() => {
+    if (showAdminDashboard) fetchAdminData();
+  }, [showAdminDashboard]);
+
   const filteredNews = news.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.source.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || 
-                           (selectedCategory === 'favorites' ? favorites.includes(item.id) : item.category === selectedCategory);
+    
+    // Se è selezionato il filtro preferiti, mostriamo solo i preferiti indipendentemente dalla categoria selezionata prima
+    if (selectedCategory === 'favorites') {
+      return matchesSearch && favorites.includes(item.id);
+    }
+    
+    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -567,8 +710,8 @@ export default function App() {
     },
     { 
       id: 'privacy', 
-      label: 'Privacy & Legal', 
-      icon: <ShieldCheck size={20} />, 
+      label: 'Info & Privacy', 
+      icon: <Info size={20} />, 
       action: () => {
         setIsInfoOpen(true);
         setIsMenuOpen(false);
@@ -832,6 +975,7 @@ export default function App() {
 
       {/* Main Content (Full Page Swipe) */}
       <main 
+        ref={scrollRef}
         className="absolute inset-0 overflow-y-auto snap-y snap-mandatory hide-scrollbar h-full w-full z-0"
         onScroll={handleScroll}
       >
@@ -870,26 +1014,41 @@ export default function App() {
           <div className="h-full">
             {filteredNews.length > 0 ? (
               <>
-                {filteredNews.slice(0, visibleCount).map((item: NewsItem, index: number) => (
-                  <div 
-                    key={item.id} 
-                    ref={index === visibleCount - 1 ? lastItemRef : null}
-                    className="h-full w-full snap-start flex-shrink-0 perspective-1000 relative"
-                  >
-                    <NewsCard 
-                      item={item} 
-                      index={index} 
-                      onInteraction={closeOverlays}
-                      isFavorite={favorites.includes(item.id)}
-                      onToggleFavorite={() => toggleFavorite(item.id)}
-                    />
-                    {/* Instruction Text */}
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-                      <p className="text-[10px] font-bold tracking-[0.2em] text-zinc-600 uppercase whitespace-nowrap">
-                        Premi l'immagine per vedere il sito
-                      </p>
+                {filteredNews.slice(0, visibleCount).map((item, index) => (
+                  <React.Fragment key={item.id}>
+                    <div 
+                      ref={index === visibleCount - 1 ? lastItemRef : null}
+                      className="h-full w-full snap-start flex-shrink-0 perspective-1000 relative"
+                    >
+                      <NewsCard 
+                        item={item} 
+                        index={index} 
+                        onInteraction={closeOverlays}
+                        isFavorite={favorites.includes(item.id)}
+                        onToggleFavorite={() => toggleFavorite(item.id)}
+                      />
+                      {/* Instruction Text */}
+                      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                        <p className="text-[10px] font-bold tracking-[0.2em] text-zinc-600 uppercase whitespace-nowrap">
+                          Premi l'immagine per vedere il sito
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                    {/* Inject AdCard every 6 items if enabled */}
+                    {(index + 1) % 6 === 0 && adsenseConfig.enabled && (
+                      <div className="h-full w-full snap-start flex-shrink-0 flex items-center justify-center p-6 md:p-12">
+                        <AdCard 
+                          id={`inline-ad-${index}`}
+                          onNext={() => {
+                            const container = scrollRef.current;
+                            if (container) {
+                              container.scrollBy({ top: container.clientHeight, behavior: 'smooth' });
+                            }
+                          }} 
+                        />
+                      </div>
+                    )}
+                  </React.Fragment>
                 ))}
                 {visibleCount < filteredNews.length && (
                   <div className="h-32 w-full flex flex-col items-center justify-center snap-start bg-black/50 backdrop-blur-sm border-t border-white/5">
@@ -934,7 +1093,7 @@ export default function App() {
               <div className="p-6 md:p-8 flex items-center justify-between border-b border-white/5 bg-zinc-900/50">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-neon-blue/20 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-neon-blue" />
+                    <Info className="w-5 h-5 text-neon-blue" />
                   </div>
                   <h3 className="text-xl font-bold text-white uppercase tracking-tighter">Info & Privacy</h3>
                 </div>
@@ -1005,68 +1164,562 @@ export default function App() {
                 </section>
               </div>
 
-              <div className="p-6 bg-zinc-900/50 text-center border-t border-white/5">
+              <div className="p-6 bg-zinc-900/50 text-center border-t border-white/5 relative">
                 <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">GamesPulse App © 2026 - Versione 1.0.0</p>
+                
+                {/* Admin Shield Icon */}
+                <button 
+                  onClick={() => {
+                    setIsInfoOpen(false);
+                    if (isAdminLoggedIn) setShowAdminDashboard(true);
+                    else setShowAdminLogin(true);
+                  }}
+                  className="mt-4 p-2 text-white/10 hover:text-neon-blue transition-colors"
+                >
+                  <Shield size={16} />
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Cookie Banner */}
+      {/* Admin Login Modal */}
       <AnimatePresence>
-        {showCookieBanner && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 left-6 right-6 md:left-auto md:right-10 md:w-96 z-[400]"
+        {showAdminLogin && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[500] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-6"
           >
-            <div className="bg-zinc-950/95 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl flex flex-col gap-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-neon-blue/10 flex items-center justify-center shrink-0">
-                  <Globe className="w-5 h-5 text-neon-blue" />
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-md bg-zinc-950 border border-white/10 rounded-[35px] p-10 shadow-[0_0_100px_rgba(0,243,255,0.1)]"
+            >
+              <div className="flex flex-col items-center mb-10">
+                <div className="w-20 h-20 rounded-3xl bg-neon-blue/10 flex items-center justify-center border border-neon-blue/20 mb-6 font-bold text-neon-blue">
+                  <Shield size={32} />
                 </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-white/80 font-medium leading-normal">
-                    Utilizziamo i cookie per migliorare la tua esperienza su GamesPulse. <button onClick={() => {setIsInfoOpen(true); setIsMenuOpen(false);}} className="text-neon-blue underline underline-offset-4 hover:text-neon-blue/80">Leggi la Privacy</button>
-                  </p>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Admin Access</h3>
+                <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] mt-2">Restricted Area</p>
+              </div>
+
+              <form onSubmit={handleAdminLogin} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] text-white/30 uppercase tracking-widest font-black mb-3 ml-2">Username</label>
+                  <input 
+                    type="text" value={adminUsername} onChange={e => setAdminUsername(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white focus:outline-none focus:border-neon-blue/40"
+                    placeholder="Enter admin ID"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-white/30 uppercase tracking-widest font-black mb-3 ml-2">Password</label>
+                  <input 
+                    type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white focus:outline-none focus:border-neon-blue/40"
+                    placeholder="••••••••"
+                  />
+                </div>
+                {adminError && <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest text-center">{adminError}</p>}
+                
+                <div className="flex gap-4 pt-4">
+                  <button type="submit" className="flex-1 bg-neon-blue text-black font-black py-5 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-neon-blue/20 active:scale-95 transition-all">
+                    Sign In
+                  </button>
+                  <button type="button" onClick={() => setShowAdminLogin(false)} className="flex-1 bg-white/5 text-white/40 font-black py-5 rounded-2xl border border-white/10 uppercase tracking-widest text-[11px] hover:bg-white/10 transition-all">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Admin Dashboard */}
+      <AnimatePresence>
+        {showAdminDashboard && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] bg-zinc-950 flex flex-col items-center justify-center p-6 overflow-hidden"
+          >
+            <div className="w-full h-full max-w-6xl bg-zinc-900/50 border border-white/10 rounded-[40px] flex overflow-hidden shadow-2xl">
+              {/* Sidebar */}
+              <div className="w-72 bg-black/40 border-r border-white/5 flex flex-col p-8">
+                <div className="flex items-center gap-3 mb-16">
+                  <div className="w-10 h-10 rounded-xl bg-neon-blue text-black flex items-center justify-center font-black">GP</div>
+                  <div>
+                    <h2 className="text-sm font-black text-white tracking-widest">DASHBOARD</h2>
+                    <p className="text-[9px] text-white/20 uppercase font-bold">Admin Management</p>
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-4">
+                  {[
+                    { id: 'seo', label: 'SEO & Metadata', icon: Search },
+                    { id: 'sources', label: 'Fonti RSS', icon: Database },
+                    { id: 'adsense', label: 'AdSense Pub', icon: Globe },
+                    { id: 'analytics', label: 'Traffico', icon: Activity }
+                  ].map(tab => (
+                    <button 
+                      key={tab.id} onClick={() => setAdminTab(tab.id)}
+                      className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${adminTab === tab.id ? 'bg-neon-blue text-black shadow-lg shadow-neon-blue/20' : 'text-white/40 hover:bg-white/5'}`}
+                    >
+                      <tab.icon size={18} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-8 border-t border-white/5 space-y-3">
+                   <button 
+                     onClick={() => setShowAdminDashboard(false)}
+                     className="w-full py-4 text-[10px] font-black uppercase text-white/30 hover:text-white transition-colors"
+                   >
+                     Torna all'App
+                   </button>
+                   <button 
+                     onClick={() => { setIsAdminLoggedIn(false); setShowAdminDashboard(false); }}
+                     className="w-full py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                   >
+                     Log Out
+                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => {
-                    localStorage.setItem('cookieConsent', 'accepted');
-                    setShowCookieBanner(false);
-                  }}
-                  className="flex-1 px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 text-black rounded-lg text-xs font-bold uppercase tracking-widest transition-colors"
-                >
-                  Accetto
-                </button>
-                <button 
-                  onClick={() => {
-                    localStorage.setItem('cookieConsent', 'rejected');
-                    setShowCookieBanner(false);
-                  }}
-                  className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors"
-                >
-                  Rifiuto
-                </button>
+
+              {/* Content Area */}
+              <div className="flex-1 bg-black/40 overflow-y-auto p-12 custom-scrollbar">
+                {adminTab === 'seo' && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                    <header className="mb-12 border-b border-white/5 pb-8 flex justify-between items-end">
+                      <div>
+                        <h2 className="text-4xl font-black text-white uppercase tracking-tighter">SEO Optimization</h2>
+                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-bold mt-2">Gestione Metadati per Categorie</p>
+                      </div>
+                      <div className="bg-neon-blue/10 border border-neon-blue/20 px-6 py-3 rounded-2xl flex items-center gap-3">
+                        <Database size={16} className="text-neon-blue" />
+                        <span className="text-[10px] font-black uppercase text-neon-blue">Database GP Sync</span>
+                      </div>
+                    </header>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {CATEGORIES.map(cat => {
+                        const config = seoConfigs[cat.id] || { title: '', description: '', keywords: '' };
+                        return (
+                          <div key={cat.id} className="bg-zinc-900/40 border border-white/5 rounded-[30px] p-8 hover:border-neon-blue/20 transition-all group">
+                            <div className="flex items-center gap-4 mb-8">
+                               <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white border border-white/10" style={{backgroundColor: `${cat.color}20`}}>
+                                  {cat.icon}
+                               </div>
+                               <div>
+                                  <h3 className="text-lg font-black text-white uppercase tracking-tighter">{cat.label}</h3>
+                                  <p className="text-[9px] text-white/20 uppercase tracking-widest font-bold">/{cat.id} endpoint</p>
+                               </div>
+                            </div>
+                            
+                            <div className="space-y-6">
+                               <div>
+                                  <label className="block text-[9px] text-white/20 uppercase tracking-widest font-black mb-3">Meta Title</label>
+                                  <input 
+                                    type="text" value={config.title} 
+                                    onChange={e => setSeoConfigs({...seoConfigs, [cat.id]: {...config, title: e.target.value}})}
+                                    onBlur={() => saveSeoConfig(cat.id, seoConfigs[cat.id])}
+                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30"
+                                  />
+                               </div>
+                               <div>
+                                  <label className="block text-[9px] text-white/20 uppercase tracking-widest font-black mb-3">Meta Description</label>
+                                  <textarea 
+                                    rows={2} value={config.description}
+                                    onChange={e => setSeoConfigs({...seoConfigs, [cat.id]: {...config, description: e.target.value}})}
+                                    onBlur={() => saveSeoConfig(cat.id, seoConfigs[cat.id])}
+                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30 resize-none"
+                                  />
+                               </div>
+                               <div>
+                                  <label className="block text-[9px] text-white/20 uppercase tracking-widest font-black mb-3">Keywords</label>
+                                  <input 
+                                    type="text" value={config.keywords}
+                                    onChange={e => setSeoConfigs({...seoConfigs, [cat.id]: {...config, keywords: e.target.value}})}
+                                    onBlur={() => saveSeoConfig(cat.id, seoConfigs[cat.id])}
+                                    className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-neon-blue/60 focus:outline-none focus:border-neon-blue/40"
+                                  />
+                               </div>
+                               <div className="flex items-center gap-2 pt-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-emerald-500/60">Live Cloud Cache Sync Enabled</span>
+                               </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+
+                {adminTab === 'sources' && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                    <header className="mb-12 border-b border-white/5 pb-8 flex justify-between items-end">
+                      <div>
+                        <h2 className="text-4xl font-black text-white uppercase tracking-tighter">Fonti Feed RSS</h2>
+                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-bold mt-2">Configurazione flussi di notizie nazionali ed internazionali</p>
+                      </div>
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 px-6 py-3 rounded-2xl flex items-center gap-3">
+                        <Database size={16} className="text-emerald-400" />
+                        <span className="text-[10px] font-black uppercase text-white">{newsSources.length} Fonti Attive</span>
+                      </div>
+                    </header>
+
+                    {/* Add Source Form */}
+                    <div className="bg-zinc-900/60 border border-white/10 rounded-3xl p-8 mb-12">
+                      <div className="flex items-center gap-4 mb-8">
+                        <Plus className="w-5 h-5 text-neon-blue" />
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Integra Nuova Fonte</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="md:col-span-1">
+                          <label className="block text-[10px] text-white/20 uppercase tracking-widest font-black mb-3">Nome Testata</label>
+                          <input value={newSource.name} onChange={e => setNewSource({...newSource, name: e.target.value})} type="text" placeholder="Es. IGN IT" className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30" />
+                        </div>
+                        <div className="md:col-span-2">
+                           <label className="block text-[10px] text-white/20 uppercase tracking-widest font-black mb-3">URL RSS Feed</label>
+                           <input value={newSource.url} onChange={e => setNewSource({...newSource, url: e.target.value})} type="url" placeholder="https://testata.it/rss.xml" className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-white/20 uppercase tracking-widest font-black mb-3">Categoria</label>
+                          <select value={newSource.cat} onChange={e => setNewSource({...newSource, cat: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30 appearance-none">
+                            {CATEGORIES.filter(c => c.id !== 'favorites').map(c => <option key={c.id} value={c.label === 'Home' ? 'News' : c.label}>{c.label === 'Home' ? 'News Generali' : c.label}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <button onClick={addSource} className="mt-8 w-full bg-neon-blue text-black font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-[11px] shadow-xl shadow-neon-blue/20 active:scale-95">
+                        Aggiungi Fonte al Database
+                      </button>
+                    </div>
+
+                    <div className="space-y-12">
+                       {CATEGORIES.filter(c => c.id !== 'favorites').map(cat => {
+                        const targetCat = cat.label === 'Home' ? 'News' : cat.label;
+                        const catSources = newsSources.filter(s => s.cat === targetCat);
+                        if (catSources.length === 0 && cat.label !== 'Home') return null;
+                        
+                        // Prevent rendering totally empty section if News/Home is strictly empty
+                        if (catSources.length === 0) return null;
+
+                        return (
+                          <div key={cat.id}>
+                            <div className="flex items-center gap-4 mb-6">
+                              <h3 className="text-lg font-black text-white uppercase tracking-tighter">{cat.label === 'Home' ? 'News Generali' : cat.label}</h3>
+                              <div className="h-px bg-white/5 flex-1" />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                              {catSources.map(source => (
+                                <div key={source.id} className="bg-zinc-900/30 border border-white/5 rounded-2xl p-5 group flex justify-between items-center hover:bg-zinc-900/50 transition-all">
+                                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                                    <button 
+                                      onClick={() => handleToggleSource(source.id)}
+                                      className={`relative w-10 h-6 rounded-full transition-all shrink-0 ${source.active !== false ? 'bg-neon-blue' : 'bg-white/10'}`}
+                                    >
+                                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${source.active !== false ? 'right-1' : 'left-1'}`} />
+                                    </button>
+                                    <div className="truncate pr-4">
+                                      <p className={`font-bold text-sm truncate uppercase tracking-tight transition-opacity ${source.active !== false ? 'text-white' : 'text-white/20'}`}>{source.name}</p>
+                                      <p className="text-[10px] text-white/20 truncate font-mono mt-1">{source.url}</p>
+                                    </div>
+                                  </div>
+                                  <button onClick={() => confirmDelete(source.id, source.name)} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100 shrink-0">
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                       })}
+                    </div>
+                  </motion.div>
+                )}
+
+                {adminTab === 'adsense' && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="bg-zinc-900 border border-white/10 rounded-[40px] p-10">
+                          <header className="flex items-center gap-4 mb-10">
+                             <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
+                               <Settings className="w-6 h-6 text-indigo-400" />
+                             </div>
+                             <div>
+                               <h3 className="text-xl font-bold text-white uppercase tracking-tight">Impostazioni Annunci</h3>
+                               <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mt-1">Sincronizzazione Gaming Ads</p>
+                             </div>
+                          </header>
+
+                          <div className="space-y-8">
+                            <div className="flex items-center justify-between p-6 bg-black/40 border border-white/5 rounded-2xl">
+                              <div>
+                                <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mb-1">Stato Monetizzazione</p>
+                                <p className={`text-sm font-bold ${adsenseConfig.enabled ? 'text-emerald-400' : 'text-white/40'}`}>
+                                  {adsenseConfig.enabled ? 'PIATTAFORMA ATTIVA' : 'SISTEMA DISABILITATO'}
+                                </p>
+                              </div>
+                              <button onClick={() => setAdsenseConfig({...adsenseConfig, enabled: !adsenseConfig.enabled})} className={`relative w-14 h-8 rounded-full transition-all duration-500 ${adsenseConfig.enabled ? 'bg-indigo-600' : 'bg-white/10'}`}>
+                                <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${adsenseConfig.enabled ? 'right-1' : 'left-1'}`} />
+                              </button>
+                            </div>
+
+                            <div>
+                              <label className="block text-[9px] text-white/30 uppercase tracking-widest font-black mb-3">Snippet Google AdSense (Head)</label>
+                              <textarea rows={6} value={adsenseConfig.script} onChange={e => setAdsenseConfig({...adsenseConfig, script: e.target.value})} placeholder="Incolla qui lo script di AdSense" className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white font-mono text-[10px] focus:outline-none focus:border-indigo-500/30 resize-none" />
+                            </div>
+
+                            <div>
+                              <label className="block text-[9px] text-white/30 uppercase tracking-widest font-black mb-3">Meta Tag Verifica</label>
+                              <input type="text" value={adsenseConfig.metaTag} onChange={e => setAdsenseConfig({...adsenseConfig, metaTag: e.target.value})} placeholder='<meta name="google-adsense-account" content="..." />' className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white font-mono text-[10px] focus:outline-none focus:border-indigo-500/30" />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border border-white/10 rounded-[40px] p-10">
+                           <header className="flex items-center gap-4 mb-10">
+                              <FileText className="w-6 h-6 text-amber-400" />
+                              <h3 className="text-lg font-bold text-white uppercase tracking-tight">ads.txt Content</h3>
+                           </header>
+                           <div className="space-y-6">
+                              <p className="text-[9px] text-white/30 uppercase tracking-widest leading-relaxed">Inserisci qui le righe per il file ads.txt. Sarà servito automaticamente all'indirizzo gamespulse.it/ads.txt</p>
+                              <textarea rows={10} value={adsenseConfig.adsTxt} onChange={e => setAdsenseConfig({...adsenseConfig, adsTxt: e.target.value})} placeholder="google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0" className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white font-mono text-[10px] focus:outline-none focus:border-amber-500/30 resize-none" />
+                              
+                              <button onClick={() => saveAdSense(adsenseConfig)} disabled={isSavingAdsense} className={`w-full py-5 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-[11px] font-black flex items-center justify-center gap-3 ${isSavingAdsense ? 'bg-indigo-900 text-white/50 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20 active:scale-95'}`}>
+                                 {isSavingAdsense ? <><RefreshCw className="animate-spin" size={16} /> Salvataggio...</> : <><Save size={16} /> Salva Configurazione</>}
+                              </button>
+                           </div>
+                        </div>
+                     </div>
+                  </motion.div>
+                )}
+
+                {adminTab === 'analytics' && (
+                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                    <header className="mb-12 border-b border-white/5 pb-8">
+                       <h2 className="text-4xl font-black text-white uppercase tracking-tighter">Traffico & Tracking</h2>
+                       <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-bold mt-2">Monitoraggio Sessioni e Utenti Real-Time</p>
+                    </header>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                       <div className="bg-zinc-900 border border-white/10 rounded-[35px] p-8 group">
+                          <header className="flex justify-between items-center mb-4">
+                             <TrendingUp className="text-emerald-400" size={20} />
+                             <span className="text-[9px] font-black text-white/20 tracking-widest uppercase">Visitatori Totali</span>
+                          </header>
+                          <p className="text-4xl font-black text-white tracking-tighter">{realTraffic.total}</p>
+                          <div className="h-2 w-full bg-white/5 rounded-full mt-6 overflow-hidden">
+                             <motion.div initial={{ width: 0 }} animate={{ width: '65%' }} className="h-full bg-emerald-400" />
+                          </div>
+                       </div>
+                       
+                       <div className="bg-zinc-900 border border-white/10 rounded-[35px] p-8 group">
+                          <header className="flex justify-between items-center mb-4">
+                             <Activity className="text-neon-blue" size={20} />
+                             <span className="text-[9px] font-black text-white/20 tracking-widest uppercase">Oggi (Real-Time)</span>
+                          </header>
+                          <p className="text-4xl font-black text-white tracking-tighter">{realTraffic.today}</p>
+                          <div className="h-2 w-full bg-white/5 rounded-full mt-6 overflow-hidden">
+                             <motion.div initial={{ width: 0 }} animate={{ width: '40%' }} className="h-full bg-neon-blue" />
+                          </div>
+                       </div>
+
+                       <div className="bg-zinc-900 border border-white/10 rounded-[35px] p-8 group">
+                          <header className="flex justify-between items-center mb-4">
+                             <Users className="text-purple-500" size={20} />
+                             <span className="text-[9px] font-black text-white/20 tracking-widest uppercase">Stima Sessioni</span>
+                          </header>
+                          <p className="text-4xl font-black text-white tracking-tighter">{Math.floor(realTraffic.total * 0.82)}</p>
+                          <div className="h-2 w-full bg-white/5 rounded-full mt-6 overflow-hidden">
+                             <motion.div initial={{ width: 0 }} animate={{ width: '82%' }} className="h-full bg-purple-500" />
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="bg-zinc-900 border border-white/10 rounded-[40px] p-10">
+                       <h3 className="text-sm font-black text-white uppercase tracking-widest mb-10 flex items-center gap-3">
+                          <BarChart3 className="text-neon-blue" size={20} />
+                          Andamento Storico Settimanale
+                       </h3>
+                       <div className="h-64 flex items-end gap-3 px-2">
+                          {[40, 65, 45, 90, 55, 100, 75].map((val, i) => (
+                            <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
+                               <motion.div 
+                                 initial={{ height: 0 }} animate={{ height: `${val}%` }}
+                                 className="w-full bg-gradient-to-t from-neon-blue/20 to-neon-blue rounded-t-xl opacity-60 group-hover:opacity-100 transition-all border-t border-white/20"
+                               />
+                               <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[8px] font-black text-white/20 uppercase tracking-widest">Giorno {i+1}</span>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                   </motion.div>
+                )}
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}} />
+      {/* Save Notification */}
+      <AnimatePresence>
+        {saveStatus.type && (
+          <motion.div 
+            initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-10 left-10 z-[1000] px-8 py-5 rounded-[25px] flex items-center gap-4 bg-zinc-950 border border-white/10 shadow-2xl"
+          >
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${saveStatus.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
+              {saveStatus.type === 'success' ? <Check size={20} /> : <AlertCircle size={20} />}
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-white uppercase tracking-widest">{saveStatus.message}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCookieBanner && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-6 right-6 md:left-auto md:w-96 z-[2000] bg-zinc-950 border border-white/10 p-8 rounded-[35px] shadow-2xl backdrop-blur-3xl"
+          >
+            <div className="flex items-center gap-4 mb-6">
+               <div className="w-12 h-12 rounded-2xl bg-neon-blue/10 flex items-center justify-center text-neon-blue">
+                 <ShieldCheck size={24} />
+               </div>
+               <div>
+                 <h4 className="text-sm font-black text-white uppercase tracking-widest">Privacy Intel</h4>
+                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Security Protocol</p>
+               </div>
+            </div>
+            <p className="text-[11px] text-zinc-400 leading-relaxed mb-8 font-medium">
+              Utilizziamo i cookie per ottimizzare la tua esperienza di gioco e analizzare il traffico. Accettando, acconsenti al nostro protocollo di dati.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => handleCookieConsent(false)}
+                className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
+                title="Rifiuta protocollo cookie"
+              >
+                Rifiuta
+              </button>
+              <button 
+                onClick={() => handleCookieConsent(true)}
+                className="flex-2 py-4 px-8 bg-neon-blue text-black font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-white transition-all shadow-lg shadow-neon-blue/20"
+                title="Accetta protocollo cookie"
+              >
+                Accetta Protocollo
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deleteConfirm && (
+          <DeleteConfirmModal 
+            show={deleteConfirm.show}
+            name={deleteConfirm.name}
+            onCancel={() => setDeleteConfirm(null)}
+            onConfirm={() => {
+              deleteSource(deleteConfirm.id);
+              setDeleteConfirm(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
+// Sub-component for Google AdSense
+const AdCard = ({ id, onNext }: { id: string; onNext?: () => void }) => {
+  const [adsenseConfig] = useState(() => {
+    const saved = localStorage.getItem('adsense_config');
+    return saved ? JSON.parse(saved) : { enabled: false, client: '', slot: '' };
+  });
+
+  useEffect(() => {
+    if (adsenseConfig.enabled) {
+      try {
+        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+      } catch (e) {
+        console.error("AdSense error:", e);
+      }
+    }
+  }, [adsenseConfig.enabled]);
+
+  if (!adsenseConfig.enabled) return null;
+
+  return (
+    <div className="w-full flex flex-col items-center justify-center py-10 px-6">
+      <div className="w-full max-w-4xl bg-zinc-950 border border-white/5 rounded-[40px] p-1 overflow-hidden relative group">
+        <div className="absolute top-4 right-8 flex items-center gap-2 z-10">
+           {onNext && (
+             <button 
+               onClick={onNext}
+               className="mr-4 px-4 py-1.5 bg-white/5 hover:bg-white/10 text-[9px] font-black text-white/40 hover:text-white uppercase tracking-widest rounded-full border border-white/10 transition-all flex items-center gap-2"
+             >
+               Skip ad <ChevronRight size={10} />
+             </button>
+           )}
+           <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Sponsored Intel</span>
+           <div className="w-1 h-1 rounded-full bg-neon-blue animate-pulse" />
+        </div>
+        <div className="bg-black/40 backdrop-blur-sm rounded-[38px] p-8 min-h-[250px] flex items-center justify-center border border-white/5">
+           <ins className="adsbygoogle"
+                style={{ display: 'block', width: '100%', minHeight: '200px' }}
+                data-ad-client={adsenseConfig.client}
+                data-ad-slot={adsenseConfig.slot}
+                data-ad-format="auto"
+                data-full-width-responsive="true"></ins>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export { App };
+
+// Sub-component for Delete Confirmation Modal
+const DeleteConfirmModal = ({ show, name, onCancel, onConfirm }: { show: boolean, name: string, onCancel: () => void, onConfirm: () => void }) => {
+  if (!show) return null;
+  return (
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        className="w-full max-w-md bg-zinc-950 border border-white/10 rounded-[40px] p-12 text-center shadow-[0_0_100px_rgba(0,0,0,1)]"
+      >
+        <div className="w-24 h-24 rounded-[30px] bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center mx-auto mb-10">
+          <Trash2 size={40} />
+        </div>
+        <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-5 text-balance leading-none">ELIMINA INTEL?</h3>
+        <p className="text-sm text-white/40 mb-12 font-medium leading-relaxed px-6">
+          Sei sicuro di voler eliminare <span className="text-white font-bold">{name}</span>?<br/>Questa azione rimuoverà permanentemente la fonte dal database.
+        </p>
+        <div className="flex gap-4">
+          <button 
+            onClick={onCancel}
+            className="flex-1 py-5 bg-white/5 text-white/60 font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-white/10 transition-all font-mono"
+          >
+            Annulla Protocollo
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="flex-1 py-5 bg-red-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-red-700 shadow-xl shadow-red-600/30 transition-all font-mono"
+          >
+            Conferma Elimina
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};

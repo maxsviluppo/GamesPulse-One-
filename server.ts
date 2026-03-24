@@ -1,9 +1,153 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
-import Parser from "rss-parser";
+import fs from "fs";
 import cors from "cors";
+import Parser from "rss-parser";
 import * as cheerio from "cheerio";
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+
+// Load Firebase Config for Cloud Sync
+let db: any = null;
+try {
+  const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  console.log("[Firebase] initialized for backend sync");
+} catch (e) {
+  console.warn("[Firebase] Could not initialize sync, falling back to local files only:", e instanceof Error ? e.message : String(e));
+}
+
+const DATA_DIR = path.join(process.cwd(), ".data");
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+const SEO_FILE = path.join(DATA_DIR, "seo_configs.json");
+const SOURCES_FILE = path.join(DATA_DIR, "news_sources.json");
+const ANALYTICS_FILE = path.join(DATA_DIR, "analytics_config.json");
+const TRAFFIC_FILE = path.join(DATA_DIR, "traffic_stats.json");
+const ADSENSE_FILE = path.join(DATA_DIR, "adsense_config.json");
+
+// Default SEO data
+const DEFAULT_SEO = {
+  all: {
+    title: "GamesPulse Live 2026 | Il Tuo Hub di Informazione Gaming",
+    description: "GamesPulse 2026: Tutte le novità su PlayStation, Xbox, Nintendo e PC. Recensioni, anteprime e notizie in tempo reale.",
+    keywords: "gaming news, videogiochi oggi, next-gen 2026, recensioni game, esports italia",
+    url: "https://gamespulse.it/explore/all"
+  }
+};
+
+// Default AdSense data
+const DEFAULT_ADSENSE = {
+  enabled: false,
+  client: "",
+  script: "",
+  adsTxt: "",
+  metaTag: ""
+};
+
+// Initialize files if missing
+if (!fs.existsSync(SEO_FILE)) fs.writeFileSync(SEO_FILE, JSON.stringify(DEFAULT_SEO, null, 2));
+if (!fs.existsSync(ANALYTICS_FILE)) fs.writeFileSync(ANALYTICS_FILE, JSON.stringify({ trackingId: "", enabled: true, verificationTag: "" }, null, 2));
+if (!fs.existsSync(ADSENSE_FILE)) fs.writeFileSync(ADSENSE_FILE, JSON.stringify(DEFAULT_ADSENSE, null, 2));
+
+let cachedSeo: any = null;
+function getSeoConfigs() {
+  if (cachedSeo) return cachedSeo;
+  try { 
+    cachedSeo = JSON.parse(fs.readFileSync(SEO_FILE, "utf-8")); 
+    return cachedSeo;
+  } catch (err) { return DEFAULT_SEO; }
+}
+function saveSeoConfigs(configs: any) { 
+  cachedSeo = configs;
+  fs.writeFileSync(SEO_FILE, JSON.stringify(configs, null, 2)); 
+}
+
+let cachedAdSense: any = null;
+let cachedAnalytics: any = null;
+let lastSync = 0;
+
+async function syncCloudConfigs() {
+  if (!db) return;
+  const now = Date.now();
+  if (now - lastSync < 60000 && cachedAdSense) return;
+
+  try {
+    const adsDoc = await getDoc(doc(db, 'configs', 'adsense'));
+    if (adsDoc.exists()) cachedAdSense = adsDoc.data();
+    
+    const anaDoc = await getDoc(doc(db, 'configs', 'analytics'));
+    if (anaDoc.exists()) cachedAnalytics = anaDoc.data();
+
+    const seoDoc = await getDoc(doc(db, 'configs', 'seo'));
+    if (seoDoc.exists()) cachedSeo = seoDoc.data();
+    
+    lastSync = now;
+    console.log("[Cloud] All configs synced from Firestore");
+  } catch (e) {
+    console.warn("[Cloud] Sync failed, using local/cache fallback:", e);
+  }
+}
+
+function getAnalytics() {
+  if (cachedAnalytics) return cachedAnalytics;
+  try { return JSON.parse(fs.readFileSync(ANALYTICS_FILE, "utf-8")); } 
+  catch (err) { return { trackingId: "", enabled: true, verificationTag: "" }; }
+}
+function saveAnalytics(data: any) { 
+  try { fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2)); } catch(e) {}
+}
+
+function getAdSense() {
+  if (cachedAdSense) return cachedAdSense;
+  try { return JSON.parse(fs.readFileSync(ADSENSE_FILE, "utf-8")); } 
+  catch (err) { return DEFAULT_ADSENSE; }
+}
+function saveAdSense(data: any) { 
+  try { fs.writeFileSync(ADSENSE_FILE, JSON.stringify(data, null, 2)); } catch(e) {}
+}
+
+function getSources() {
+  try { return JSON.parse(fs.readFileSync(SOURCES_FILE, "utf-8")); } catch (err) { return []; }
+}
+function saveSources(sources: any) { fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2)); }
+
+let memoryTraffic = { total: 0, today: 0, lastUpdate: new Date().toDateString(), history: {} };
+try {
+  const data = JSON.parse(fs.readFileSync(TRAFFIC_FILE, "utf-8"));
+  if (data.lastUpdate === memoryTraffic.lastUpdate) {
+     memoryTraffic = data;
+  } else {
+     memoryTraffic = { ...data, today: 0, lastUpdate: memoryTraffic.lastUpdate };
+  }
+} catch (e) {}
+let isTrafficDirty = false;
+
+function recordVisit() {
+  const today = new Date().toDateString();
+  if (memoryTraffic.lastUpdate !== today) {
+     memoryTraffic.today = 0;
+     memoryTraffic.lastUpdate = today;
+  }
+  memoryTraffic.total += 1;
+  memoryTraffic.today += 1;
+  memoryTraffic.history[today] = (memoryTraffic.history[today] || 0) + 1;
+  isTrafficDirty = true;
+  return memoryTraffic;
+}
+
+setInterval(() => {
+  if (isTrafficDirty) {
+    try {
+      fs.writeFileSync(TRAFFIC_FILE, JSON.stringify(memoryTraffic, null, 2));
+      isTrafficDirty = false;
+    } catch (e) {
+      console.error("[Traffic] Failed to persist stats:", e);
+    }
+  }
+}, 30000);
 
 const app = express();
 const parser = new Parser({
@@ -11,438 +155,99 @@ const parser = new Parser({
     item: [
       ['media:content', 'media:content', { keepArray: true }],
       ['media:thumbnail', 'media:thumbnail'],
-      ['media:group', 'media:group'],
+      ['content:encoded', 'content:encoded'],
       ['image', 'image'],
-      ['enclosure', 'enclosure'],
-      ['thumb', 'thumb'],
-    ],
-  },
+      ['thumbnail', 'thumbnail']
+    ]
+  }
 });
 
-// Cache mechanism
-let newsCache: any[] = [];
-let lastFetchTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-app.use(cors());
-app.use(express.json());
-
-// Gaming RSS Feeds
-const FEEDS = {
-  // Italian
-  multiplayer: "https://multiplayer.it/feed/",
-  ign_it: "https://it.ign.com/feed.xml",
-  everyeye: "https://www.everyeye.it/feed/",
-  gamesource: "https://www.gamesource.it/feed/",
-  spaziogames: "https://www.spaziogames.it/feed/",
-  
-  // English
-  ign: "https://feeds.feedburner.com/ign/all",
-  gamespot: "https://www.gamespot.com/feeds/mashup/",
-  eurogamer: "https://www.eurogamer.net/feed",
-  kotaku: "https://kotaku.com/rss",
-  polygon: "https://www.polygon.com/rss/index.xml",
-  pcgamer: "https://www.pcgamer.com/rss",
-  nintendolife: "https://www.nintendolife.com/feeds/latest",
-  pushsquare: "https://www.pushsquare.com/feeds/latest",
-  purexbox: "https://www.purexbox.com/feeds/latest",
-  gamesindustry: "https://www.gamesindustry.biz/feed",
-  
-  // Tech & Mobile
-  theverge: "https://www.theverge.com/rss/index.xml",
-  engadget: "https://www.engadget.com/rss.xml",
-  androidcentral: "https://www.androidcentral.com/rss.xml",
-  macrumors: "https://feeds.macrumors.com/MacRumors-All",
-  hdblog: "https://www.hdblog.it/feed/",
-  
-  // Video Feeds
-  ps_global: "https://www.youtube.com/feeds/videos.xml?channel_id=UC-2Y8L_huKU29enH8vGZ9yA",
-  xbox_global: "https://www.youtube.com/feeds/videos.xml?channel_id=UCjBp_7RuDBUYbd1LegWEJ8g",
-  nintendo_it: "https://www.youtube.com/feeds/videos.xml?channel_id=UC6f_u6p_GZ_vX_Z_B_6Q8sw",
-  gametrailers: "https://www.youtube.com/feeds/videos.xml?channel_id=UCm4WlDgi7QAsitnybaid2vA",
-  digitalfoundry: "https://www.youtube.com/feeds/videos.xml?channel_id=UC9PBzalIcEQCsiIkq36PyUA",
-  multiplayer_video: "https://multiplayer.it/feed/video/",
-  ign_video: "http://feeds.feedburner.com/ign/video-reviews",
-  gamespot_video: "https://www.gamespot.com/feeds/video/",
-};
-
-function extractImage(item: any) {
-  // 1. Enclosure
-  if (item.enclosure && item.enclosure.url) {
-    if (item.enclosure.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return item.enclosure.url;
+function extractImageUrl(item: any): string | null {
+  if (item["media:content"]) {
+    const media = Array.isArray(item["media:content"]) ? item["media:content"] : [item["media:content"]];
+    const img = media.find((m: any) => m.$ && (m.$.type?.includes('image') || m.$.medium === 'image' || m.$.url?.match(/\.(jpg|jpeg|png|gif|webp)/i)));
+    if (img && img.$.url) return img.$.url;
   }
+  if (item["media:thumbnail"] && item["media:thumbnail"].$ && item["media:thumbnail"].$.url) return item["media:thumbnail"].$.url;
+  if (item.image && item.image.url) return item.image.url;
+  if (item.thumbnail && item.thumbnail.url) return item.thumbnail.url;
   
-  // 2. Media Content / Thumbnail
-  const mediaTags = ["media:content", "media:thumbnail", "media:group", "image", "enclosure", "thumb", "media:description"];
-  for (const tag of mediaTags) {
-    const content = item[tag];
-    if (content) {
-      if (Array.isArray(content)) {
-        const firstWithUrl = content.find((c: any) => {
-          const url = c.$?.url || c.url || (typeof c === 'string' ? c : null);
-          return url && url.match(/\.(jpg|jpeg|png|webp|gif)/i);
-        });
-        if (firstWithUrl) return firstWithUrl.$?.url || firstWithUrl.url || (typeof firstWithUrl === 'string' ? firstWithUrl : null);
-      }
-      if (content.$ && content.$.url) {
-        if (content.$.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.$.url;
-      }
-      if (content.url && content.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.url;
-      if (typeof content === 'string' && content.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content;
-    }
-  }
+  const content = (item["content:encoded"] || item.content || item.description || "");
+  const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["']/);
+  if (imgMatch) return imgMatch[1];
   
-  // 3. Content/Description Regex (Improved)
-  const fullContent = item.content || item["content:encoded"] || item.description || "";
-  
-  // Try to find the largest image or first good one
-  const imgMatches = [...fullContent.matchAll(/<img[^>]+(?:src|data-src|srcset|original-src)=["']([^"'>\s]+)["']/gi)];
-  for (const match of imgMatches) {
-    const url = match[1];
-    if (!url.includes('pixel') && !url.includes('analytics') && !url.includes('doubleclick') && !url.includes('spacer') && !url.includes('icon')) {
-      // Prioritize high-res images (often have 'large', 'high', 'fit' in URL)
-      if (url.includes('large') || url.includes('quality') || url.includes('width=1200')) return url;
-      return url;
-    }
-  }
-
   return null;
 }
 
-function extractVideo(item: any) {
-  // Special filter for Engadget: their RSS often contains broken Yahoo/AOL video players
-  if (item.source === 'ENGADGET' || (item.link && item.link.includes('engadget.com'))) {
-    // Only allow YouTube/Vimeo for Engadget, block internal players that fail CORS
-    if (content.includes('youtube.com') || content.includes('youtu.be') || content.includes('vimeo.com') || item['yt:videoId']) {
-      // proceed
-    } else {
-      return null;
-    }
-  }
-
-  // 1. Explicit YouTube/Vimeo tags from various providers
-  if (item['yt:videoId']) return `https://www.youtube.com/embed/${item['yt:videoId']}`;
-  if (item.id && item.id.startsWith('yt:video:')) return `https://www.youtube.com/embed/${item.id.replace('yt:video:', '')}`;
-  
-  // Custom metadata from some platforms
-  const mediaTags = ["media:content", "media:thumbnail", "media:group", "enclosure", "video"];
-  for (const tag of mediaTags) {
-    const data = item[tag];
-    if (data) {
-      const array = Array.isArray(data) ? data : [data];
-      const video = array.find((m: any) => {
-        const type = m.$?.type || m.type || "";
-        const medium = m.$?.medium || m.medium || "";
-        const url = m.$?.url || m.url || (typeof m === 'string' ? m : "");
-        return type.includes('video') || medium === 'video' || url.match(/\.(mp4|webm|ogg|m4v)/i) || url.includes('youtube.com/embed');
-      });
-      if (video) {
-        let url = video.$?.url || video.url || (typeof video === 'string' ? video : null);
-        if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
-           const ytId = url.match(/(?:v=|embed\/|youtu\.be\/|v\/)([a-zA-Z0-9_-]{11})/)?.[1];
-           if (ytId) return `https://www.youtube.com/embed/${ytId}`;
-        }
-        if (url) return url;
-      }
-    }
-  }
-
-  // 2. YouTube Embeds/Links in content (extended regex)
-  const ytMatch = content.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-  
-  // 3. Vimeo Embeds/Links
-  const vimeoMatch = content.match(/https?:\/\/(?:www\.)?(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
-  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-
-  // 4. iframe sources (general catch)
-  const iframeMatch = content.match(/<iframe[^>]+src=["']([^"']+)["']/);
-  if (iframeMatch) {
-    let src = iframeMatch[1];
-    if (src.includes('youtube.com') || src.includes('youtu.be')) {
-      const ytId = src.match(/(?:v=|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
-      if (ytId) return `https://www.youtube.com/embed/${ytId}`;
-    }
-    return src;
-  }
-
-  // 5. Direct Video Files
-  const videoFileMatch = content.match(/https?:\/\/[^"'>\s]+\.(mp4|webm|ogg|m4v)/i);
-  if (videoFileMatch) return videoFileMatch[0];
-
-  return null;
-}
-
-async function fetchMetaInfo(url: string) {
-  if (!url) return { image: null, video: null };
+// RSS Fetching with filters logic
+app.get("/api/news", async (req, res) => {
+  const { url, category, source } = req.query;
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 seconds
-    const response = await fetch(url, { 
-      signal: controller.signal,
-      headers: { 
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      } 
-    });
-    clearTimeout(timeoutId);
-    if (!response.ok) return { image: null, video: null };
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    
-    const image = $('meta[property="og:image"]').attr('content') || 
-                  $('meta[name="twitter:image"]').attr('content') ||
-                  $('meta[property="og:image:secure_url"]').attr('content') ||
-                  $('meta[name="thumbnail"]').attr('content') ||
-                  $('link[rel="image_src"]').attr('href') ||
-                  $('link[rel="apple-touch-icon"]').attr('href') ||
-                  $('meta[name="msapplication-TileImage"]').attr('content');
-    
-    let video = $('meta[property="og:video:url"]').attr('content') ||
-                $('meta[property="og:video:secure_url"]').attr('content') ||
-                $('meta[property="og:video"]').attr('content') ||
-                $('meta[name="twitter:player"]').attr('content') ||
-                $('meta[property="og:video:iframe"]').attr('content') ||
-                $('meta[name="twitter:player:stream"]').attr('content') ||
-                $('link[rel="alternate"][type="application/json+oembed"]').attr('href');
-
-    // If we found an oembed link, we could theoretically fetch it, but lets stick to simple meta for now
-    // Add check for raw <video> tags in the page if desperate
-    if (!video) {
-      video = $('video source').attr('src') || $('video').attr('src');
-    }
-
-    // Handle YouTube links in meta tags
-    if (video && (video.includes('youtube.com') || video.includes('youtu.be'))) {
-      const ytId = video.match(/(?:v=|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
-      if (ytId) video = `https://www.youtube.com/embed/${ytId}`;
-    }
-
-    let finalImage = image || null;
-    if (finalImage && !finalImage.startsWith('http')) {
-      try {
-        finalImage = new URL(finalImage, url).href;
-      } catch {
-        finalImage = null;
-      }
-    }
-    return { image: finalImage, video: video || null };
-  } catch (e) {
-    return { image: null, video: null };
-  }
-}
-
-app.get("/api/proxy", async (req, res) => {
-  const url = req.query.url as string;
-  if (!url) return res.status(400).send("URL is required");
-
-  try {
-    const response = await fetch(url, {
+    const response = await fetch(url as string, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*'
       }
     });
 
-    if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status} when fetching feed`);
+    let rawXml = await response.text();
+    const feed = await parser.parseString(rawXml);
 
-    let html = await response.text();
-    
-    // Inject <base> tag to fix relative links and images
-    const baseUrl = new URL(url).origin;
-    const baseTag = `<base href="${baseUrl}/">`;
-    
-    // Engadget and Yahoo sites often use Next.js/React which crashes when proxied due to CORS on their internal APIs
-    // We strip their scripts and Next.js data to prevent the "Application error" crash
-    if (url.includes('engadget.com') || url.includes('yahoo.com') || url.includes('techcrunch.com')) {
-      // Remove all scripts and Next.js specific JSON data
-      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-      html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-      html = html.replace(/<link rel="preload" as="script" [^>]*>/gi, '');
-      html = html.replace(/<next-route-announcer>[\s\S]*?<\/next-route-announcer>/gi, '');
-    }
+    const items = feed.items.map((item) => ({
+      id: item.guid || item.link || Math.random().toString(),
+      title: item.title,
+      url: item.link,
+      summary: (item.contentSnippet || item.summary || "").substring(0, 200) + "...",
+      category: category as string,
+      source: source as string,
+      imageUrl: extractImageUrl(item),
+      time: item.pubDate ? new Date(item.pubDate).toLocaleTimeString() : new Date().toLocaleTimeString(),
+      timestamp: item.pubDate ? new Date(item.pubDate).getTime() : Date.now()
+    }));
 
-    if (html.includes("<head>")) {
-      html = html.replace("<head>", `<head>${baseTag}`);
-    } else {
-      html = `${baseTag}${html}`;
-    }
-
-    res.setHeader("Content-Type", "text/html");
-    res.send(html);
+    res.send(items);
   } catch (error) {
-    console.error("Proxy error:", error);
-    res.status(500).send("Failed to load content");
+    console.error("RSS Fetch error:", error);
+    res.status(500).send("Failed to fetch news feed");
   }
 });
 
-app.get("/api/news", async (req, res) => {
-  const forceRefresh = req.query.refresh === 'true';
-  const now = Date.now();
-  
-  if (!forceRefresh && newsCache.length > 0 && (now - lastFetchTime < CACHE_DURATION)) {
-    return res.json(newsCache);
-  }
-
-  try {
-    const feedPromises = Object.entries(FEEDS).map(async ([source, url]) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased to 8s
-
-      try {
-        const response = await fetch(url, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-          }
-        });
-
-        clearTimeout(timeoutId);
-        if (!response.ok) return [];
-        
-        let xml = await response.text();
-        xml = xml.replace(/&(?!(?:[a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);)/g, '&amp;');
-        xml = xml.replace(/<([a-zA-Z0-9:_.-]+)\s+([^>]*?)\s*>/g, (match, tagName, attrs) => {
-          const sanitizedAttrs = attrs.replace(/([a-zA-Z0-9:_.-]+)(?!=)(\s|$)/g, '$1=""$2');
-          return `<${tagName} ${sanitizedAttrs}>`;
-        });
-        xml = xml.replace(/(\s)([0-9][a-zA-Z0-9:_.-]*=)/g, '$1attr_$2');
-        xml = xml.replace(/(\s[a-zA-Z0-9:_.-]+)\s*=\s*(["'])/g, '$1=$2');
-        xml = xml.replace(/<(title|description|content:encoded)>([\s\S]*?)<\/\1>/g, (match, tag, content) => {
-          if (content.includes('<') && !content.trim().startsWith('<![CDATA[')) {
-            return `<${tag}><![CDATA[${content}]]></${tag}>`;
-          }
-          return match;
-        });
-
-        try {
-          const feed = await parser.parseString(xml);
-          return feed.items.map(item => ({
-            id: item.guid || item.link,
-            title: item.title,
-            link: item.link,
-            pubDate: item.pubDate,
-            content: item.contentSnippet || item.content,
-            source: source.toUpperCase(),
-            image: extractImage(item),
-            video: extractVideo(item),
-          }));
-        } catch (parseError) {
-          const $ = cheerio.load(xml, { xmlMode: true });
-          const items: any[] = [];
-          $('item, entry').each((i, el) => {
-            const $el = $(el);
-            const title = $el.find('title').text();
-            const link = $el.find('link').attr('href') || $el.find('link').text();
-            const pubDate = $el.find('pubDate, published, updated').text();
-            const content = $el.find('description, content\\:encoded, summary').text();
-            const guid = $el.find('guid, id').text();
-            let image = null;
-            
-            // Try to find image in various tags
-            const enclosure = $el.find('enclosure').attr('url');
-            const mediaContent = $el.find('media\\:content, content').attr('url');
-            const mediaThumbnail = $el.find('media\\:thumbnail, thumbnail').attr('url');
-            const ogImage = $el.find('og\\:image').text();
-            
-            if (enclosure) image = enclosure;
-            else if (mediaContent) image = mediaContent;
-            else if (mediaThumbnail) image = mediaThumbnail;
-            else if (ogImage) image = ogImage;
-            else {
-              const imgMatch = content.match(/<img[^>]+(?:src|data-src|srcset)="([^"> ]+)"/);
-              if (imgMatch) image = imgMatch[1];
-            }
-            
-            if (title && link) {
-              items.push({
-                id: guid || link,
-                title,
-                link,
-                pubDate,
-                content: content.replace(/<[^>]*>?/gm, '').substring(0, 200),
-                source: source.toUpperCase(),
-                image,
-                video: extractVideo({ content }),
-              });
-            }
-          });
-          return items;
-        }
-      } catch (e) {
-        return [];
-      }
-    });
-
-    const results = await Promise.all(feedPromises);
-    const allNews = results.flat().sort((a, b) => {
-      const dateA = new Date(a.pubDate).getTime();
-      const dateB = new Date(b.pubDate).getTime();
-      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
-    });
-    
-    const slicedNews = allNews.slice(0, 500);
-
-    // ONLINE ON VERCEL: Disable slow metadata enhancement to prevent 504 Gateway Timeout (10s limit)
-    const isVercel = process.env.VERCEL === '1';
-    if (isVercel) {
-      // Just return what we have quickly
-      newsCache = slicedNews;
-      lastFetchTime = Date.now();
-      return res.json(slicedNews);
-    }
-
-    // Local only deep enhancement
-    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 20);
-    if (newsToEnhance.length > 0) {
-      await Promise.all(newsToEnhance.map(async (item) => {
-        const meta = await fetchMetaInfo(item.link);
-        if (meta.image && !item.image) {
-          item.image = meta.image;
-        }
-        if (meta.video && !item.video) {
-          item.video = meta.video;
-        }
-        
-        // Final fallback for images if still null
-        if (!item.image) {
-          const keywords = ['gaming', 'videogames', 'console', 'ps5', 'xbox', 'nintendo'];
-          item.image = `https://picsum.photos/seed/${encodeURIComponent(item.title.substring(0, 10))}/800/450`;
-        }
-      }));
-    }
-
-    newsCache = slicedNews;
-    lastFetchTime = Date.now();
-    res.json(slicedNews);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch news" });
-  }
+// All sources (Active only filtered on frontend, but kept here for backend Parity)
+app.get("/api/admin/sources", (req, res) => res.json(getSources()));
+app.post("/api/admin/sources", express.json(), (req, res) => {
+  const { auth, sources } = req.body;
+  if (auth?.username !== 'admin' || auth?.password !== 'accessometti') return res.status(401).send("Unauthorized");
+  saveSources(sources);
+  res.send("Saved");
 });
 
-export default app;
+app.get("/api/admin/adsense", async (req, res) => {
+  await syncCloudConfigs();
+  res.json(getAdSense());
+});
 
-async function startServer() {
-  const PORT = 3010;
-  
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
+app.post("/api/admin/adsense", express.json(), (req, res) => {
+  const { auth, data } = req.body;
+  if (auth?.username !== 'admin' || auth?.password !== 'accessometti') return res.status(401).send("Unauthorized");
+  saveAdSense(data);
+  res.send("Saved");
+});
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+app.get("/api/admin/traffic", (req, res) => res.json(memoryTraffic));
+
+async function start() {
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: "spa"
   });
+  app.use(vite.middlewares);
+  app.get("*", (req, res, next) => {
+    recordVisit();
+    next();
+  });
+  const port = 3010;
+  app.listen(port, () => console.log(`GamesPulse running at http://localhost:${port}`));
 }
 
-if (process.env.VERCEL !== '1') {
-  startServer();
-}
+start();
