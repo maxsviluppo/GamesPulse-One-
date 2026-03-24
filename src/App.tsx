@@ -222,12 +222,12 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       {/* Front Side */}
       <div 
         style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'translateZ(1px)', pointerEvents: isFlipped ? 'none' : 'auto' }}
-        className={`absolute inset-0 group bg-zinc-950 overflow-hidden transition-all duration-500 flex flex-col cursor-pointer hover:scale-[1.01] z-10 ${NEON_COLORS[index % NEON_COLORS.length]}`}
+        className="absolute inset-0 group bg-zinc-950 overflow-hidden transition-all duration-500 flex flex-col cursor-pointer hover:scale-[1.01] z-10"
         onClick={handleFlip}
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-[10%] left-[10%] right-[10%] bottom-[230px] overflow-hidden bg-black rounded-3xl">
+          <div className="absolute top-[10%] left-0 right-0 bottom-[230px] overflow-hidden bg-black">
             {item.video.includes('embed') || item.video.includes('youtube') || item.video.includes('vimeo') ? (
               (() => {
                 const base = item.video || '';
@@ -264,9 +264,13 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               />
             )}
             <div className="absolute inset-0 bg-transparent"></div>
+            {/* Vignette - Increased top, decreased bottom */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/20 via-transparent to-black/75"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent"></div>
+            <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/60 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-[10%] left-[10%] right-[10%] bottom-[230px] overflow-hidden rounded-3xl">
+          <div className="absolute top-[10%] left-0 right-0 bottom-[230px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
@@ -276,12 +280,14 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             />
             {/* Vignette Effect - Increased center brightness */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.15)_0%,_transparent_45%,_rgba(0,0,0,0.65)_100%)]"></div>
-            {/* Multi-layered gradient for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/95"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent"></div>
+            {/* Multi-layered gradient - Updated Top 85%, Bottom 75% */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/20 via-transparent to-black/75"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent"></div>
+            {/* Additional Top Vignette Edge */}
+            <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/60 to-transparent"></div>
           </div>
         ) : (
-            <div className="absolute top-[5%] left-[5%] right-[5%] bottom-[230px] bg-zinc-900/80 rounded-3xl">
+            <div className="absolute top-[10%] left-0 right-0 bottom-[230px] bg-zinc-900/80">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -629,7 +635,7 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-hidden relative">
       {/* Header - Integrated Top Bar */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-black/1 backdrop-blur-xl border-b border-white/10 px-6 py-4">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-black/5 backdrop-blur-xl border-b border-white/10 px-6 py-4">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold font-display tracking-tighter neon-text-blue italic drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
