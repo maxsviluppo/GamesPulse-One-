@@ -2,152 +2,31 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs";
-import cors from "cors";
 import Parser from "rss-parser";
+import cors from "cors";
 import * as cheerio from "cheerio";
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
-// Load Firebase Config for Cloud Sync
-let db: any = null;
-try {
-  const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
-  const app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  console.log("[Firebase] initialized for backend sync");
-} catch (e) {
-  console.warn("[Firebase] Could not initialize sync, falling back to local files only:", e instanceof Error ? e.message : String(e));
-}
-
+// Constants
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const DATA_DIR = path.join(process.cwd(), ".data");
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const SEO_FILE = path.join(DATA_DIR, "seo_configs.json");
 const SOURCES_FILE = path.join(DATA_DIR, "news_sources.json");
-const ANALYTICS_FILE = path.join(DATA_DIR, "analytics_config.json");
-const TRAFFIC_FILE = path.join(DATA_DIR, "traffic_stats.json");
-const ADSENSE_FILE = path.join(DATA_DIR, "adsense_config.json");
 
-// Default SEO data
-const DEFAULT_SEO = {
-  all: {
-    title: "GamesPulse Live 2026 | Il Tuo Hub di Informazione Gaming",
-    description: "GamesPulse 2026: Tutte le novità su PlayStation, Xbox, Nintendo e PC. Recensioni, anteprime e notizie in tempo reale.",
-    keywords: "gaming news, videogiochi oggi, next-gen 2026, recensioni game, esports italia",
-    url: "https://gamespulse.it/explore/all"
-  }
-};
-
-// Default AdSense data
-const DEFAULT_ADSENSE = {
-  enabled: false,
-  client: "",
-  script: "",
-  adsTxt: "",
-  metaTag: ""
-};
-
-// Initialize files if missing
-if (!fs.existsSync(SEO_FILE)) fs.writeFileSync(SEO_FILE, JSON.stringify(DEFAULT_SEO, null, 2));
-if (!fs.existsSync(ANALYTICS_FILE)) fs.writeFileSync(ANALYTICS_FILE, JSON.stringify({ trackingId: "", enabled: true, verificationTag: "" }, null, 2));
-if (!fs.existsSync(ADSENSE_FILE)) fs.writeFileSync(ADSENSE_FILE, JSON.stringify(DEFAULT_ADSENSE, null, 2));
-
-let cachedSeo: any = null;
-function getSeoConfigs() {
-  if (cachedSeo) return cachedSeo;
-  try { 
-    cachedSeo = JSON.parse(fs.readFileSync(SEO_FILE, "utf-8")); 
-    return cachedSeo;
-  } catch (err) { return DEFAULT_SEO; }
-}
-function saveSeoConfigs(configs: any) { 
-  cachedSeo = configs;
-  fs.writeFileSync(SEO_FILE, JSON.stringify(configs, null, 2)); 
+// Ensure .data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-let cachedAdSense: any = null;
-let cachedAnalytics: any = null;
-let lastSync = 0;
-
-async function syncCloudConfigs() {
-  if (!db) return;
-  const now = Date.now();
-  if (now - lastSync < 60000 && cachedAdSense) return;
-
-  try {
-    const adsDoc = await getDoc(doc(db, 'configs', 'adsense'));
-    if (adsDoc.exists()) cachedAdSense = adsDoc.data();
-    
-    const anaDoc = await getDoc(doc(db, 'configs', 'analytics'));
-    if (anaDoc.exists()) cachedAnalytics = anaDoc.data();
-
-    const seoDoc = await getDoc(doc(db, 'configs', 'seo'));
-    if (seoDoc.exists()) cachedSeo = seoDoc.data();
-    
-    lastSync = now;
-    console.log("[Cloud] All configs synced from Firestore");
-  } catch (e) {
-    console.warn("[Cloud] Sync failed, using local/cache fallback:", e);
-  }
+// Ensure news_sources.json exists with defaults if not present
+if (!fs.existsSync(SOURCES_FILE)) {
+  const DEFAULT_SOURCES = [
+    { "id": "gp-001", "url": "https://it.ign.com/feed.xml", "cat": "News", "name": "IGN IT", "active": true },
+    { "id": "gp-002", "url": "https://multiplayer.it/feed/", "cat": "News", "name": "Multiplayer", "active": true },
+    { "id": "gp-003", "url": "https://www.everyeye.it/feed/", "cat": "News", "name": "Everyeye", "active": true },
+    { "id": "gp-004", "url": "https://www.gamesource.it/feed/", "cat": "News", "name": "GameSource", "active": true },
+    { "id": "gp-005", "url": "https://www.spaziogames.it/feed/", "cat": "News", "name": "Spaziogames", "active": true }
+  ];
+  fs.writeFileSync(SOURCES_FILE, JSON.stringify(DEFAULT_SOURCES, null, 2));
 }
-
-function getAnalytics() {
-  if (cachedAnalytics) return cachedAnalytics;
-  try { return JSON.parse(fs.readFileSync(ANALYTICS_FILE, "utf-8")); } 
-  catch (err) { return { trackingId: "", enabled: true, verificationTag: "" }; }
-}
-function saveAnalytics(data: any) { 
-  try { fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2)); } catch(e) {}
-}
-
-function getAdSense() {
-  if (cachedAdSense) return cachedAdSense;
-  try { return JSON.parse(fs.readFileSync(ADSENSE_FILE, "utf-8")); } 
-  catch (err) { return DEFAULT_ADSENSE; }
-}
-function saveAdSense(data: any) { 
-  try { fs.writeFileSync(ADSENSE_FILE, JSON.stringify(data, null, 2)); } catch(e) {}
-}
-
-function getSources() {
-  try { return JSON.parse(fs.readFileSync(SOURCES_FILE, "utf-8")); } catch (err) { return []; }
-}
-function saveSources(sources: any) { fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2)); }
-
-let memoryTraffic = { total: 0, today: 0, lastUpdate: new Date().toDateString(), history: {} };
-try {
-  const data = JSON.parse(fs.readFileSync(TRAFFIC_FILE, "utf-8"));
-  if (data.lastUpdate === memoryTraffic.lastUpdate) {
-     memoryTraffic = data;
-  } else {
-     memoryTraffic = { ...data, today: 0, lastUpdate: memoryTraffic.lastUpdate };
-  }
-} catch (e) {}
-let isTrafficDirty = false;
-
-function recordVisit() {
-  const today = new Date().toDateString();
-  if (memoryTraffic.lastUpdate !== today) {
-     memoryTraffic.today = 0;
-     memoryTraffic.lastUpdate = today;
-  }
-  memoryTraffic.total += 1;
-  memoryTraffic.today += 1;
-  memoryTraffic.history[today] = (memoryTraffic.history[today] || 0) + 1;
-  isTrafficDirty = true;
-  return memoryTraffic;
-}
-
-setInterval(() => {
-  if (isTrafficDirty) {
-    try {
-      fs.writeFileSync(TRAFFIC_FILE, JSON.stringify(memoryTraffic, null, 2));
-      isTrafficDirty = false;
-    } catch (e) {
-      console.error("[Traffic] Failed to persist stats:", e);
-    }
-  }
-}, 30000);
 
 const app = express();
 const parser = new Parser({
@@ -155,99 +34,264 @@ const parser = new Parser({
     item: [
       ['media:content', 'media:content', { keepArray: true }],
       ['media:thumbnail', 'media:thumbnail'],
-      ['content:encoded', 'content:encoded'],
+      ['media:group', 'media:group'],
       ['image', 'image'],
-      ['thumbnail', 'thumbnail']
-    ]
+      ['enclosure', 'enclosure'],
+      ['thumb', 'thumb'],
+    ],
+  },
+});
+
+// Cache mechanism
+let newsCache: any[] = [];
+let lastFetchTime = 0;
+
+app.use(cors());
+app.use(express.json());
+
+// Helper to load sources
+function loadSources() {
+  try {
+    const data = fs.readFileSync(SOURCES_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    console.error("Error loading sources:", e);
+    return [];
+  }
+}
+
+// Endpoints for admin
+app.get("/api/sources", (req, res) => {
+  res.json(loadSources());
+});
+
+app.post("/api/sources", (req, res) => {
+  try {
+    const sources = req.body;
+    fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
+    lastFetchTime = 0; // Clear cache
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to save sources" });
   }
 });
 
-function extractImageUrl(item: any): string | null {
-  if (item["media:content"]) {
-    const media = Array.isArray(item["media:content"]) ? item["media:content"] : [item["media:content"]];
-    const img = media.find((m: any) => m.$ && (m.$.type?.includes('image') || m.$.medium === 'image' || m.$.url?.match(/\.(jpg|jpeg|png|gif|webp)/i)));
-    if (img && img.$.url) return img.$.url;
+function extractImage(item: any) {
+  if (item.enclosure && item.enclosure.url) {
+    if (item.enclosure.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return item.enclosure.url;
   }
-  if (item["media:thumbnail"] && item["media:thumbnail"].$ && item["media:thumbnail"].$.url) return item["media:thumbnail"].$.url;
-  if (item.image && item.image.url) return item.image.url;
-  if (item.thumbnail && item.thumbnail.url) return item.thumbnail.url;
-  
-  const content = (item["content:encoded"] || item.content || item.description || "");
-  const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["']/);
-  if (imgMatch) return imgMatch[1];
-  
+  const mediaTags = ["media:content", "media:thumbnail", "media:group", "image", "enclosure", "thumb"];
+  for (const tag of mediaTags) {
+    const content = item[tag];
+    if (content) {
+      if (Array.isArray(content)) {
+        const firstWithUrl = content.find((c: any) => {
+          const url = c.$?.url || c.url || (typeof c === 'string' ? c : null);
+          return url && url.match(/\.(jpg|jpeg|png|webp|gif)/i);
+        });
+        if (firstWithUrl) return firstWithUrl.$?.url || firstWithUrl.url || (typeof firstWithUrl === 'string' ? firstWithUrl : null);
+      }
+      if (content.$ && content.$.url) {
+        if (content.$.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.$.url;
+      }
+      if (content.url && content.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.url;
+      if (typeof content === 'string' && content.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content;
+    }
+  }
+  const content = item.content || item["content:encoded"] || item.description || "";
+  const imgMatches = content.matchAll(/<img[^>]+(?:src|data-src|srcset)="([^"> ]+)"/g);
+  for (const match of imgMatches) {
+    const url = match[1];
+    if (!url.includes('pixel') && !url.includes('analytics') && !url.includes('doubleclick') && !url.includes('spacer')) {
+      return url;
+    }
+  }
   return null;
 }
 
-// RSS Fetching with filters logic
-app.get("/api/news", async (req, res) => {
-  const { url, category, source } = req.query;
+function extractVideo(item: any) {
+  const content = (item.content || item["content:encoded"] || item.description || "").toLowerCase();
+  if (item['yt:videoId']) return `https://www.youtube.com/embed/${item['yt:videoId']}`;
+  if (item.id && item.id.startsWith('yt:video:')) return `https://www.youtube.com/embed/${item.id.replace('yt:video:', '')}`;
+  const ytMatch = content.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+  const vimeoMatch = content.match(/https?:\/\/player\.vimeo\.com\/video\/(\d+)/);
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  const iframeMatch = content.match(/<iframe[^>]+src=["']([^"']+)["']/);
+  if (iframeMatch) {
+    const src = iframeMatch[1];
+    if (src.includes('youtube.com') || src.includes('vimeo.com')) return src;
+  }
+  const videoFileMatch = content.match(/https?:\/\/[^"'>]+\.(mp4|webm|ogg)/);
+  if (videoFileMatch) return videoFileMatch[0];
+  if (item["media:content"]) {
+    const media = Array.isArray(item["media:content"]) ? item["media:content"] : [item["media:content"]];
+    const video = media.find((m: any) => m.$ && (m.$.type?.includes('video') || m.$.medium === 'video' || m.$.url?.match(/\.(mp4|webm|ogg)$/)));
+    if (video && video.$.url) return video.$.url;
+  }
+  return null;
+}
+
+async function fetchMetaInfo(url: string) {
+  if (!url) return { image: null, video: null };
   try {
-    const response = await fetch(url as string, {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(url, { 
+      signal: controller.signal,
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      } 
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) return { image: null, video: null };
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const image = $('meta[property="og:image"]').attr('content') || 
+                  $('meta[name="twitter:image"]').attr('content') ||
+                  $('meta[property="og:image:secure_url"]').attr('content');
+    let video = $('meta[property="og:video:url"]').attr('content') ||
+                $('meta[property="og:video:secure_url"]').attr('content') ||
+                $('meta[property="og:video"]').attr('content') ||
+                $('meta[name="twitter:player"]').attr('content');
+    if (video && (video.includes('youtube.com') || video.includes('youtu.be'))) {
+      const ytId = video.match(/(?:v=|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+      if (ytId) video = `https://www.youtube.com/embed/${ytId}`;
+    }
+    let finalImage = image || null;
+    if (finalImage && !finalImage.startsWith('http')) {
+      try { finalImage = new URL(finalImage, url).href; } catch { finalImage = null; }
+    }
+    return { image: finalImage, video: video || null };
+  } catch (e) {
+    return { image: null, video: null };
+  }
+}
+
+app.get("/api/proxy", async (req, res) => {
+  const url = req.query.url as string;
+  if (!url) return res.status(400).send("URL is required");
+  try {
+    const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': 'application/rss+xml, application/xml, text/xml, */*'
       }
     });
-
-    if (!response.ok) throw new Error(`HTTP ${response.status} when fetching feed`);
-    let rawXml = await response.text();
-    const feed = await parser.parseString(rawXml);
-
-    const items = feed.items.map((item) => ({
-      id: item.guid || item.link || Math.random().toString(),
-      title: item.title,
-      url: item.link,
-      summary: (item.contentSnippet || item.summary || "").substring(0, 200) + "...",
-      category: category as string,
-      source: source as string,
-      imageUrl: extractImageUrl(item),
-      time: item.pubDate ? new Date(item.pubDate).toLocaleTimeString() : new Date().toLocaleTimeString(),
-      timestamp: item.pubDate ? new Date(item.pubDate).getTime() : Date.now()
-    }));
-
-    res.send(items);
+    if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+    let html = await response.text();
+    const baseUrl = new URL(url).origin;
+    const baseTag = `<base href="${baseUrl}/">`;
+    if (url.includes('engadget.com') || url.includes('yahoo.com') || url.includes('techcrunch.com')) {
+      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+    }
+    html = html.includes("<head>") ? html.replace("<head>", `<head>${baseTag}`) : `${baseTag}${html}`;
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
   } catch (error) {
-    console.error("RSS Fetch error:", error);
-    res.status(500).send("Failed to fetch news feed");
+    res.status(500).send("Failed to load content");
   }
 });
 
-// All sources (Active only filtered on frontend, but kept here for backend Parity)
-app.get("/api/admin/sources", (req, res) => res.json(getSources()));
-app.post("/api/admin/sources", express.json(), (req, res) => {
-  const { auth, sources } = req.body;
-  if (auth?.username !== 'admin' || auth?.password !== 'accessometti') return res.status(401).send("Unauthorized");
-  saveSources(sources);
-  res.send("Saved");
+app.get("/api/news", async (req, res) => {
+  const forceRefresh = req.query.refresh === 'true';
+  const now = Date.now();
+  if (!forceRefresh && newsCache.length > 0 && (now - lastFetchTime < CACHE_DURATION)) {
+    return res.json(newsCache);
+  }
+  try {
+    const sources = loadSources().filter((s: any) => s.active !== false);
+    const feedPromises = sources.map(async (source: any) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(source.url, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+          }
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) return [];
+        let xml = await response.text();
+        const feed = await parser.parseString(xml);
+        return feed.items.map(item => ({
+          id: item.guid || item.link,
+          title: item.title,
+          link: item.link,
+          pubDate: item.pubDate,
+          content: item.contentSnippet || item.content,
+          source: source.name,
+          image: extractImage(item),
+          video: extractVideo(item),
+        }));
+      } catch (e) { return []; }
+    });
+    const results = await Promise.all(feedPromises);
+    const allNews = results.flat().sort((a, b) => {
+      const dateA = new Date(a.pubDate).getTime();
+      const dateB = new Date(b.pubDate).getTime();
+      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+    });
+    const slicedNews = allNews.slice(0, 500);
+    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 100);
+    if (newsToEnhance.length > 0) {
+      await Promise.all(newsToEnhance.map(async (item) => {
+        const meta = await fetchMetaInfo(item.link);
+        if (meta.image && !item.image) item.image = meta.image;
+        if (meta.video && !item.video) item.video = meta.video;
+        if (!item.image) {
+          item.image = `https://picsum.photos/seed/${encodeURIComponent(item.title.substring(0, 10))}/800/450`;
+        }
+      }));
+    }
+    newsCache = slicedNews;
+    lastFetchTime = Date.now();
+    res.json(slicedNews);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch news" });
+  }
 });
 
-app.get("/api/admin/adsense", async (req, res) => {
-  await syncCloudConfigs();
-  res.json(getAdSense());
+// Config endpoints
+app.get("/api/config/:type", (req, res) => {
+  const { type } = req.params;
+  const filePath = path.join(DATA_DIR, `${type}_configs.json`);
+  if (fs.existsSync(filePath)) res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+  else res.json({});
 });
 
-app.post("/api/admin/adsense", express.json(), (req, res) => {
-  const { auth, data } = req.body;
-  if (auth?.username !== 'admin' || auth?.password !== 'accessometti') return res.status(401).send("Unauthorized");
-  saveAdSense(data);
-  res.send("Saved");
+app.post("/api/config/:type", (req, res) => {
+  const { type } = req.params;
+  const filePath = path.join(DATA_DIR, `${type}_configs.json`);
+  fs.writeFileSync(filePath, JSON.stringify(req.body, null, 2));
+  res.json({ success: true });
 });
 
-app.get("/api/admin/traffic", (req, res) => res.json(memoryTraffic));
+export default app;
 
-async function start() {
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: "spa"
+async function startServer() {
+  const PORT = 3010;
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
   });
-  app.use(vite.middlewares);
-  app.get("*", (req, res, next) => {
-    recordVisit();
-    next();
-  });
-  const port = 3010;
-  app.listen(port, () => console.log(`GamesPulse running at http://localhost:${port}`));
 }
 
-start();
+if (process.env.VERCEL !== '1') {
+  startServer();
+}
+
