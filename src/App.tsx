@@ -250,7 +250,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[240px] overflow-hidden bg-black">
+          <div className="absolute top-[10px] left-0 right-0 bottom-[260px] overflow-hidden bg-black">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
@@ -271,14 +271,14 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               />
             )}
             <div className="absolute inset-0 bg-transparent"></div>
-            {/* Vignette Effect - Reduced for videos */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.3)_100%)]"></div>
-            {/* Multi-layered gradient for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/95"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
+            {/* Vignette top: +20% stronger, +5% higher */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.25)_100%)]"></div>
+            <div className="absolute top-0 left-0 right-0 h-[45%] bg-gradient-to-b from-black/30 via-black/10 to-transparent"></div>
+            {/* Vignette bottom: -10% softer, -5% lower */}
+            <div className="absolute bottom-0 left-0 right-0 h-[55%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[240px] overflow-hidden">
+          <div className="absolute top-[10px] left-0 right-0 bottom-[260px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
@@ -286,14 +286,14 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               referrerPolicy="no-referrer"
               onError={() => setImageError(true)}
             />
-            {/* Vignette Effect */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_30%,_rgba(0,0,0,0.5)_100%)]"></div>
-            {/* Multi-layered gradient for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/95"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
+            {/* Vignette top: +20% stronger, +5% higher */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_30%,_rgba(0,0,0,0.4)_100%)]"></div>
+            <div className="absolute top-0 left-0 right-0 h-[45%] bg-gradient-to-b from-black/30 via-black/10 to-transparent"></div>
+            {/* Vignette bottom: -10% softer, -5% lower */}
+            <div className="absolute bottom-0 left-0 right-0 h-[55%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-0 left-0 right-0 bottom-[240px] bg-zinc-900/80">
+          <div className="absolute top-[10px] left-0 right-0 bottom-[260px] bg-zinc-900/80">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -639,12 +639,16 @@ export default function App() {
   const fetchNews = async (force = false) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/news${force ? '?refresh=true' : ''}`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const response = await fetch(`/api/news${force ? '?refresh=true' : ''}`, { signal: controller.signal });
+      clearTimeout(timeout);
       const data = await response.json();
       
-      if (!Array.isArray(data)) {
-        console.error('Invalid news data format:', data);
+      if (!Array.isArray(data) || data.length === 0) {
+        console.warn('No news data received, stopping loader');
         setNews([]);
+        setLoading(false);
         return;
       }
       
@@ -653,8 +657,13 @@ export default function App() {
         category: getCategory(item)
       }));
       setNews(categorizedData);
-    } catch (error) {
-      console.error('Error fetching news:', error);
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        console.warn('News fetch timed out — stopping loader');
+      } else {
+        console.error('Error fetching news:', error);
+      }
+      setNews([]);
     } finally {
       setLoading(false);
     }
@@ -668,42 +677,29 @@ export default function App() {
 
 
   const fetchConfigs = async () => {
-    try {
-      // 1. Concurrent Fetch (Faster)
-      const results = await Promise.allSettled([
-        getDoc(doc(db, 'admin_configs', 'seo')),
-        getDoc(doc(db, 'admin_configs', 'adsense')),
-        getDoc(doc(db, 'admin_configs', 'analytics')),
-        getDoc(doc(db, 'admin_configs', 'traffic')),
-        fetch('/api/config/seo').then(r => r.json()),
-        fetch('/api/config/adsense').then(r => r.json()),
-        fetch('/api/config/analytics').then(r => r.json()),
-        fetch('/api/config/traffic').then(r => r.json())
-      ]);
+    // Non-blocking: fetch from cloud/API and merge over hardcoded defaults
+    const timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
+    const safeGet = async (fn: () => Promise<any>) => { try { return await Promise.race([fn(), timeout(5000)]); } catch { return null; } };
 
-      const fireData = (i: number) => {
-        const item = results[i];
-        return item.status === 'fulfilled' && (item.value as any).exists?.() ? (item.value as any).data() : null;
-      };
-      const apiData = (i: number) => {
-        const item = results[i + 4];
-        return item.status === 'fulfilled' ? item.value : null;
-      };
+    const [fireSeo, fireAds, fireAna, apiSeo, apiAds, apiAna] = await Promise.all([
+      safeGet(() => getDoc(doc(db, 'admin_configs', 'seo'))),
+      safeGet(() => getDoc(doc(db, 'admin_configs', 'adsense'))),
+      safeGet(() => getDoc(doc(db, 'admin_configs', 'analytics'))),
+      safeGet(() => fetch('/api/config/seo').then(r => r.ok ? r.json() : null)),
+      safeGet(() => fetch('/api/config/adsense').then(r => r.ok ? r.json() : null)),
+      safeGet(() => fetch('/api/config/analytics').then(r => r.ok ? r.json() : null)),
+    ]);
 
-      const seo = fireData(0) || apiData(0) || {};
-      const ads = fireData(1) || apiData(1) || { enabled: false, script: '', metaTag: '', adsTxt: '' };
-      const ana = fireData(2) || apiData(2) || { trackingId: '', verificationTag: '', enabled: false };
-      const tra = fireData(3) || apiData(3) || {};
+    const seoFromCloud = (fireSeo?.exists?.() ? fireSeo.data() : null) || (apiSeo && Object.keys(apiSeo).length > 0 ? apiSeo : null);
+    const adsFromCloud = (fireAds?.exists?.() ? fireAds.data() : null) || (apiAds && Object.keys(apiAds).length > 0 ? apiAds : null);
+    const anaFromCloud = (fireAna?.exists?.() ? fireAna.data() : null) || (apiAna && Object.keys(apiAna).length > 0 ? apiAna : null);
 
-      setSeoConfigs(seo);
-      setAdsenseConfig(ads);
-      setAnalyticsConfig(ana);
-      setTrafficStats(tra);
+    // Merge cloud data over hardcoded defaults (cloud wins if available)
+    if (seoFromCloud) setSeoConfigs((prev: any) => ({ ...prev, ...seoFromCloud }));
+    if (adsFromCloud) setAdsenseConfig(adsFromCloud);
+    if (anaFromCloud) setAnalyticsConfig(anaFromCloud);
 
-      console.log("Configs Synced:", { seo, ads, ana, tra });
-    } catch (e) { 
-      console.error("Error fetching configs:", e); 
-    }
+    console.log('Configs loaded:', { seoFromCloud, adsFromCloud, anaFromCloud });
   };
 
   const saveSeoConfig = async (catId: string, config: any) => {
@@ -1178,30 +1174,44 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             />
-            <div className="relative z-10 flex flex-col items-center gap-2">
+            <div className="relative z-10 flex flex-col items-center gap-0">
+              {/* Outer glow ring */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ 
-                  opacity: [0.5, 1, 0.5],
-                  scale: [1, 1.05, 1],
-                  filter: [
-                    'drop-shadow(0 0 10px rgba(0,243,255,0.2))',
-                    'drop-shadow(0 0 30px rgba(0,243,255,0.6))',
-                    'drop-shadow(0 0 10px rgba(0,243,255,0.2))'
-                  ]
-                }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                className="relative"
+                animate={{ opacity: [0.15, 0.4, 0.15], scale: [1, 1.08, 1] }}
+                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                className="absolute w-64 h-64 rounded-full bg-neon-blue/10 blur-3xl pointer-events-none"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.85, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
               >
-                <img 
-                  src="/logocompleto.png" 
-                  alt="GamesPulse" 
-                  className="w-56 md:w-72"
+                <motion.img
+                  src="/logocompleto.png"
+                  alt="GamesPulse"
+                  className="w-52 md:w-64 relative z-10"
+                  animate={{
+                    filter: [
+                      'drop-shadow(0 0 8px rgba(0,243,255,0.0))',
+                      'drop-shadow(0 0 28px rgba(0,243,255,0.7))',
+                      'drop-shadow(0 0 8px rgba(0,243,255,0.0))'
+                    ]
+                  }}
+                  transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
                 />
               </motion.div>
-              <div className="mt-8 flex flex-col items-center gap-1">
-                <span className="text-neon-blue font-black uppercase tracking-[0.6em] text-[8px] md:text-[10px] opacity-40">Initializing Neural Link</span>
-                <div className="w-24 h-[1px] bg-gradient-to-r from-transparent via-neon-blue/40 to-transparent"></div>
+              <div className="mt-10 flex flex-col items-center gap-2">
+                <div className="flex gap-1">
+                  {[0,1,2].map(i => (
+                    <motion.div
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-neon-blue/60"
+                      animate={{ opacity: [0.2, 1, 0.2], y: [0, -4, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+                    />
+                  ))}
+                </div>
+                <span className="text-neon-blue/40 font-black uppercase tracking-[0.5em] text-[8px]">Syncing Intel</span>
               </div>
             </div>
           </div>
