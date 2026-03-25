@@ -1592,9 +1592,9 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[600] bg-black flex flex-col items-stretch h-full overflow-hidden"
           >
-            <div className="flex flex-col sm:flex-row h-full">
-              {/* Sidebar */}
-              <div className="w-full sm:w-80 bg-zinc-950 border-r border-white/10 flex flex-col shrink-0">
+            <div className="flex flex-col lg:flex-row h-full">
+              {/* Sidebar / Mobile Nav */}
+              <div className="w-full lg:w-80 bg-zinc-950 border-b lg:border-r border-white/10 flex flex-col lg:h-full shrink-0 z-50">
                 <div className="p-8 border-b border-white/5 bg-zinc-900/40">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-neon-blue/10 flex items-center justify-center text-neon-blue border border-neon-blue/20">
@@ -1607,65 +1607,52 @@ export default function App() {
                   </div>
                 </div>
                 
-                <nav className="flex-1 overflow-y-auto p-4 py-8 space-y-2">
+                <nav className="flex lg:flex-col overflow-x-auto lg:overflow-y-auto p-4 lg:py-8 gap-2 no-scrollbar">
                   <button 
                     onClick={() => setAdminTab('seo')}
-                    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all group ${adminTab === 'seo' ? 'bg-neon-blue/10 text-white border border-neon-blue/20 shadow-[0_0_20px_rgba(0,243,255,0.1)]' : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                    className={`flex-none lg:w-full flex items-center gap-3 lg:gap-4 px-4 lg:px-5 py-3 lg:py-4 rounded-xl lg:rounded-2xl transition-all group ${adminTab === 'seo' ? 'bg-neon-blue/10 text-white border border-neon-blue/20' : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'}`}
                   >
-                    <Activity size={20} className={`transition-colors ${adminTab === 'seo' ? 'text-neon-blue' : 'text-white/40'}`} />
-                    <span className="text-xs font-black uppercase tracking-widest">Seo</span>
-                    <ChevronRight size={16} className={`ml-auto transition-transform ${adminTab === 'seo' ? 'rotate-90 opacity-100' : 'opacity-0'}`} />
+                    <Activity size={18} className={`transition-colors ${adminTab === 'seo' ? 'text-neon-blue' : 'text-white/40'}`} />
+                    <span className="text-[10px] lg:text-xs font-black uppercase tracking-widest whitespace-nowrap">Seo</span>
                   </button>
 
                   <button 
                     onClick={() => setAdminTab('analytics')}
-                    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all group ${adminTab === 'analytics' ? 'bg-amber-600/10 text-white border border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                    className={`flex-none lg:w-full flex items-center gap-3 lg:gap-4 px-4 lg:px-5 py-3 lg:py-4 rounded-xl lg:rounded-2xl transition-all group ${adminTab === 'analytics' ? 'bg-amber-600/10 text-white border border-amber-500/20' : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'}`}
                   >
-                    <BarChart3 size={20} className={`transition-colors ${adminTab === 'analytics' ? 'text-amber-400' : 'text-white/40'}`} />
-                    <span className="text-xs font-black uppercase tracking-widest">Traffic</span>
+                    <BarChart3 size={18} className={`transition-colors ${adminTab === 'analytics' ? 'text-amber-400' : 'text-white/40'}`} />
+                    <span className="text-[10px] lg:text-xs font-black uppercase tracking-widest whitespace-nowrap">Traffic</span>
                   </button>
 
                   <button 
                     onClick={() => setAdminTab('sources')}
-                    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all group ${adminTab === 'sources' ? 'bg-emerald-600/10 text-white border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                    className={`flex-none lg:w-full flex items-center gap-3 lg:gap-4 px-4 lg:px-5 py-3 lg:py-4 rounded-xl lg:rounded-2xl transition-all group ${adminTab === 'sources' ? 'bg-emerald-600/10 text-white border border-emerald-500/20' : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'}`}
                   >
-                    <Database size={20} className={`transition-colors ${adminTab === 'sources' ? 'text-emerald-400' : 'text-white/40'}`} />
-                    <span className="text-xs font-black uppercase tracking-widest">Feed</span>
+                    <Database size={18} className={`transition-colors ${adminTab === 'sources' ? 'text-emerald-400' : 'text-white/40'}`} />
+                    <span className="text-[10px] lg:text-xs font-black uppercase tracking-widest whitespace-nowrap">Feed</span>
                   </button>
 
                   <button 
                     onClick={() => setAdminTab('adsense')}
-                    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all group ${adminTab === 'adsense' ? 'bg-neon-blue/10 text-white border border-neon-blue/20 shadow-[0_0_20px_rgba(0,243,255,0.1)]' : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                    className={`flex-none lg:w-full flex items-center gap-3 lg:gap-4 px-4 lg:px-5 py-3 lg:py-4 rounded-xl lg:rounded-2xl transition-all group ${adminTab === 'adsense' ? 'bg-neon-blue/10 text-white border border-neon-blue/20' : 'text-white/40 hover:text-white hover:bg-white/5 border border-transparent'}`}
                   >
-                    <Cpu size={20} className={`transition-colors ${adminTab === 'adsense' ? 'text-neon-blue' : 'text-white/40'}`} />
-                    <span className="text-xs font-black uppercase tracking-widest">Adsense</span>
+                    <Cpu size={18} className={`transition-colors ${adminTab === 'adsense' ? 'text-neon-blue' : 'text-white/40'}`} />
+                    <span className="text-[10px] lg:text-xs font-black uppercase tracking-widest whitespace-nowrap">Adsense</span>
                   </button>
                 </nav>
 
-                <div className="p-6 border-t border-white/5 bg-zinc-900/20 space-y-3">
+                <div className="p-4 lg:p-6 border-t border-white/5 bg-zinc-900/20 grid grid-cols-2 lg:grid-cols-1 gap-2">
                   <button 
                     onClick={saveAllConfigs}
-                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-neon-blue text-black hover:bg-neon-blue/80 transition-all text-[10px] font-black uppercase tracking-widest shadow-[0_0_20px_rgba(0,243,255,0.2)]"
+                    className="flex items-center justify-center gap-2 py-3 lg:py-4 rounded-xl lg:rounded-2xl bg-neon-blue text-black hover:bg-neon-blue/80 transition-all text-[9px] lg:text-[10px] font-black uppercase tracking-widest"
                   >
-                    <Save size={14} /> Salva Tutto Cloud
-                  </button>
-                  <button 
-                    onClick={forceLoadLocal}
-                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-black uppercase tracking-widest"
-                  >
-                    <HardDrive size={14} /> Carica da File
-                  </button>
-                  <button 
-                    onClick={() => { fetchConfigs(); fetchSources(); }}
-                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-black uppercase tracking-widest"
-                  >
-                    <RefreshCw size={14} className={isSavingSeo ? 'animate-spin' : ''} /> Refresh Data
+                    <Save size={12} /> <span className="hidden lg:inline">Salva Tutto</span> Cloud
                   </button>
                   <button 
                     onClick={() => { setIsAdminLoggedIn(false); setShowAdminDashboard(false); }}
-                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all text-xs font-black uppercase tracking-widest"
+                    className="flex items-center justify-center gap-2 py-3 lg:py-4 rounded-xl lg:rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 text-[9px] lg:text-xs font-black uppercase tracking-widest"
                   >
-                    <LogOut size={16} /> Esci Panel
+                    <LogOut size={12} /> Esci
                   </button>
                 </div>
               </div>
@@ -1677,9 +1664,9 @@ export default function App() {
                   {/* Tab: SEO & Metadata */}
                   {adminTab === 'seo' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                      <header className="mb-16 pb-8 border-b border-white/5">
-                        <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Seo Control</h1>
-                        <p className="text-white/40 mt-2 uppercase tracking-[0.3em] text-[10px] font-bold">Gestione metadati categorie</p>
+                      <header className="mb-8 lg:mb-16 pb-6 lg:pb-8 border-b border-white/5">
+                        <h1 className="text-2xl lg:text-4xl font-black text-white uppercase tracking-tighter">Seo Control</h1>
+                        <p className="text-white/40 mt-1 uppercase tracking-[0.3em] text-[10px] font-bold">Gestione metadati categorie</p>
                       </header>
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1747,59 +1734,49 @@ export default function App() {
                   {/* Tab: Sources RSS */}
                   {adminTab === 'sources' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                      <header className="mb-12 pb-8 border-b border-white/5 flex items-center justify-between">
+                      <header className="mb-8 pb-6 border-b border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                         <div>
-                          <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Feed Management</h1>
-                          <p className="text-white/40 mt-2 uppercase tracking-[0.3em] text-[10px] font-bold">Configurazione flussi Gaming</p>
+                          <h1 className="text-2xl lg:text-4xl font-black text-white uppercase tracking-tighter">Feed Management</h1>
+                          <p className="text-white/40 mt-1 uppercase tracking-[0.3em] text-[10px] font-bold">Configurazione flussi Gaming</p>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="bg-emerald-500/10 border border-emerald-500/20 px-6 py-3 rounded-2xl flex items-center gap-3">
-                            <Database size={16} className="text-emerald-400" />
-                            <span className="text-xs font-black text-white uppercase tracking-widest">{newsSources.length} Feed RSS Attivi</span>
-                          </div>
-                          <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl flex items-center gap-3">
-                            <div className="flex -space-x-2">
-                              {CATEGORIES.filter(c => c.id !== 'all' && c.id !== 'favorites').slice(0, 5).map(c => (
-                                <div key={c.id} className="w-6 h-6 rounded-lg border-2 border-zinc-950 flex items-center justify-center text-[7px]" style={{ backgroundColor: c.color }}>
-                                  {c.id.substring(0, 1).toUpperCase()}
-                                </div>
-                              ))}
-                            </div>
-                            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">Categorizzazione<br/><span className="text-white text-[9px]">{CATEGORIES.length - 2} Aree Intel</span></span>
+                        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+                          <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl flex items-center gap-2 lg:gap-3">
+                            <Database size={14} className="text-emerald-400" />
+                            <span className="text-[10px] lg:text-xs font-black text-white uppercase tracking-widest">{newsSources.length} Feed</span>
                           </div>
                           <button 
                             onClick={() => {
                               const anyInactive = newsSources.some(s => s.active === false);
                               handleToggleAll(anyInactive);
                             }}
-                            className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl flex items-center gap-3 hover:bg-white/10 transition-all group"
+                            className="bg-white/5 border border-white/10 px-4 py-2 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl flex items-center gap-2 lg:gap-3 hover:bg-white/10 transition-all group"
                           >
-                            <CheckCircle2 size={16} className={`transition-transform group-hover:scale-110 ${newsSources.every(s => s.active !== false) ? 'text-neon-blue' : 'text-white/40'}`} />
-                            <span className="text-xs font-black text-white uppercase tracking-widest">
-                              {newsSources.every(s => s.active !== false) ? 'Disabilita Tutte' : 'Abilita Tutte'}
+                            <CheckCircle2 size={14} className={`transition-transform group-hover:scale-110 ${newsSources.every(s => s.active !== false) ? 'text-neon-blue' : 'text-white/40'}`} />
+                            <span className="text-[10px] lg:text-xs font-black text-white uppercase tracking-widest">
+                              {newsSources.every(s => s.active !== false) ? 'OFF ALL' : 'ON ALL'}
                             </span>
                           </button>
                         </div>
                       </header>
 
                       {/* Add Source Form */}
-                      <div className="bg-zinc-900/60 border border-white/10 rounded-3xl p-8 mb-12 shadow-2xl">
-                        <div className="flex items-center gap-4 mb-8">
-                          <Plus size={20} className="text-neon-blue" />
-                          <h3 className="text-sm font-black text-white uppercase tracking-widest">Integra Nuova Fonte</h3>
+                      <div className="bg-zinc-900/60 border border-white/10 rounded-2xl lg:rounded-3xl p-5 lg:p-8 mb-8 lg:mb-12 shadow-2xl">
+                        <div className="flex items-center gap-4 mb-6 lg:mb-8">
+                          <Plus size={18} className="text-neon-blue" />
+                          <h3 className="text-xs lg:text-sm font-black text-white uppercase tracking-widest">Integra Nuova Fonte</h3>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                          <div className="md:col-span-1">
-                            <label className="block text-[10px] text-white/20 uppercase tracking-widest font-black mb-3 ml-1">Nome</label>
-                            <input value={newSource.name} onChange={e => setNewSource({...newSource, name: e.target.value})} type="text" placeholder="Es. IGN IT" className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30" />
-                          </div>
-                          <div className="md:col-span-2">
-                             <label className="block text-[10px] text-white/20 uppercase tracking-widest font-black mb-3 ml-1">URL RSS</label>
-                             <input value={newSource.url} onChange={e => setNewSource({...newSource, url: e.target.value})} type="url" placeholder="https://..." className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30" />
+                        <div className="grid grid-cols-1 gap-4 lg:gap-6">
+                          <div>
+                            <label className="block text-[9px] lg:text-[10px] text-white/20 uppercase tracking-widest font-black mb-2 ml-1">Nome</label>
+                            <input value={newSource.name} onChange={e => setNewSource({...newSource, name: e.target.value})} type="text" placeholder="Es. IGN IT" className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 lg:px-5 lg:py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30" />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-white/20 uppercase tracking-widest font-black mb-3 ml-1">Categoria</label>
-                            <select value={newSource.cat} onChange={e => setNewSource({...newSource, cat: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30 appearance-none">
+                             <label className="block text-[9px] lg:text-[10px] text-white/20 uppercase tracking-widest font-black mb-2 ml-1">URL RSS</label>
+                             <input value={newSource.url} onChange={e => setNewSource({...newSource, url: e.target.value})} type="url" placeholder="https://..." className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 lg:px-5 lg:py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30" />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] lg:text-[10px] text-white/20 uppercase tracking-widest font-black mb-2 ml-1">Categoria</label>
+                            <select value={newSource.cat} onChange={e => setNewSource({...newSource, cat: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 lg:px-5 lg:py-4 text-xs text-white focus:outline-none focus:border-neon-blue/30 appearance-none">
                               {CATEGORIES.filter(c => c.id !== 'all' && c.id !== 'favorites').map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
                             </select>
                           </div>
@@ -1807,7 +1784,7 @@ export default function App() {
                         <button 
                           type="button" 
                           onClick={addSource} 
-                          className="mt-8 w-full bg-neon-blue hover:bg-neon-blue/80 text-black font-black py-5 rounded-2xl transition-all uppercase tracking-widest text-[11px] shadow-xl shadow-neon-blue/20 active:scale-[0.98]"
+                          className="mt-6 lg:mt-8 w-full bg-neon-blue hover:bg-neon-blue/80 text-black font-black py-4 lg:py-5 rounded-xl lg:rounded-2xl transition-all uppercase tracking-widest text-[10px] lg:text-[11px] shadow-xl shadow-neon-blue/20"
                         >
                           Aggiungi Fonte
                         </button>
