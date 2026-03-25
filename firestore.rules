@@ -64,5 +64,9 @@ service cloud.firestore {
                       (!('role' in request.resource.data) || request.resource.data.role == resource.data.role || isAdmin());
       allow delete: if isAdmin();
     }
+
+    match /admin_configs/{configId} {
+      allow read, write: if isAdmin();
+    }
   }
 }

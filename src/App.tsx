@@ -1987,7 +1987,8 @@ export default function App() {
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                              <ShieldCheck size={14} /> Proprietà Pronta
+                              {analyticsConfig.enabled ? <ShieldCheck size={14} /> : <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+                              {analyticsConfig.enabled ? 'Proprietà Pronta' : 'Monitoraggio Disattivato'}
                             </div>
                           </div>
                         </div>
@@ -1996,9 +1997,15 @@ export default function App() {
                            <div className="space-y-8 text-left">
                               <div className="bg-black/40 border border-white/5 rounded-2xl p-6 lg:p-8 text-left">
                                 <h4 className="text-[10px] text-white/20 uppercase tracking-widest font-black mb-6">Search Console (GSC)</h4>
-                                <p className="text-xs text-white/60 font-bold mb-4">Meta Tag HTML attualmente iniettato nell'header:</p>
-                                <div className="bg-zinc-800/80 p-4 rounded-xl border border-white/5 font-mono text-[9px] text-neon-blue break-all">
-                                  {`<meta name="google-site-verification" content="${analyticsConfig.verificationTag}" />`}
+                                <div className="space-y-4">
+                                  <label className="block text-[9px] text-white/40 uppercase tracking-widest font-black ml-1">Meta Tag di Verifica</label>
+                                  <input 
+                                    value={analyticsConfig.verificationTag || ''}
+                                    onChange={e => setAnalyticsConfig({...analyticsConfig, verificationTag: e.target.value})}
+                                    placeholder="gDuVjhcBFsTnVD9P1m9vh-K..."
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-neon-blue font-mono focus:outline-none focus:border-neon-blue shadow-inner"
+                                  />
+                                  <p className="text-[9px] text-white/20 uppercase font-bold italic">Questo tag verrà iniettato automaticamente nell'header HTML.</p>
                                 </div>
                               </div>
 
@@ -2010,34 +2017,51 @@ export default function App() {
                                     value={analyticsConfig.trackingId || ''}
                                     onChange={e => setAnalyticsConfig({...analyticsConfig, trackingId: e.target.value})}
                                     placeholder="G-XXXXXXXXXX"
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-neon-blue"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-neon-blue font-mono"
                                   />
+                                </div>
+                                <div className="mt-6 flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl border border-white/5">
+                                   <span className="text-[9px] text-white/40 font-black uppercase tracking-widest">Attiva Tracciamento</span>
+                                   <button 
+                                      onClick={() => setAnalyticsConfig({...analyticsConfig, enabled: !analyticsConfig.enabled})}
+                                      className={`w-12 h-6 rounded-full transition-all relative ${analyticsConfig.enabled ? 'bg-emerald-500' : 'bg-white/10'}`}
+                                   >
+                                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${analyticsConfig.enabled ? 'right-1' : 'left-1'}`} />
+                                   </button>
                                 </div>
                               </div>
                            </div>
 
-                           <div className="bg-neon-blue/5 border border-neon-blue/20 rounded-3xl p-8 lg:p-12 flex flex-col items-center justify-center text-center">
-                              <div className="w-20 h-20 rounded-full bg-neon-blue/10 border border-neon-blue/20 flex items-center justify-center text-neon-blue mb-8 animate-pulse">
+                           <div className="bg-neon-blue/5 border border-neon-blue/10 rounded-3xl p-8 lg:p-12 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                              <div className="absolute top-0 right-0 p-4 opacity-5">
+                                <Globe size={120} className="text-neon-blue" />
+                              </div>
+                              <div className="w-20 h-20 rounded-full bg-neon-blue/10 border border-neon-blue/20 flex items-center justify-center text-neon-blue mb-8 animate-pulse shadow-[0_0_30px_rgba(0,243,255,0.1)]">
                                 <ShieldCheck size={40} />
                               </div>
-                              <h4 className="text-lg font-black text-white uppercase tracking-widest mb-4">Sito pronto per Google</h4>
-                              <p className="text-xs text-white/40 leading-relaxed max-w-sm">
-                                La configurazione di indicizzazione è stata ottimizzata. Il tag di verifica è presente stabilmente nell'HTML della home page. Clicca sul pulsante sottostante per confermare tutte le impostazioni globali di Google.
+                              <h4 className="text-xl font-black text-white uppercase tracking-widest mb-4">Sito pronto per Google</h4>
+                              <p className="text-xs text-white/40 leading-relaxed max-w-sm mb-10">
+                                La configurazione di indicizzazione è stata ottimizzata. Assicurati che il codice di verifica inserito a sinistra corrisponda a quello fornito da Search Console.
                               </p>
                               <button 
                                 onClick={async () => {
                                   setIsSavingAdsense(true);
                                   try {
-                                    await setDoc(doc(db, 'admin_configs', 'analytics'), analyticsConfig);
-                                    setSaveStatus({ type: 'success', message: 'Configurazione Google Aggiornata!' });
-                                  } catch (e) {
-                                    setSaveStatus({ type: 'error', message: 'Errore nel salvataggio!' });
+                                    // Semplifichiamo il riferimento al doc per evitare errori di trigger
+                                    const anaRef = doc(db, 'admin_configs', 'analytics');
+                                    await setDoc(anaRef, analyticsConfig, { merge: true });
+                                    setSaveStatus({ type: 'success', message: 'Configurazione Google Sincronizzata!' });
+                                  } catch (e: any) {
+                                    console.error('Save error:', e);
+                                    setSaveStatus({ type: 'error', message: `Errore DB: ${e.message}` });
+                                  } finally {
+                                    setIsSavingAdsense(false);
                                   }
-                                  setIsSavingAdsense(false);
                                 }}
-                                className="mt-10 w-full py-5 bg-neon-blue text-black font-black text-[11px] rounded-2xl uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-neon-blue/20"
+                                disabled={isSavingAdsense}
+                                className={`w-full py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${isSavingAdsense ? 'bg-zinc-800 text-white/30 cursor-not-allowed' : 'bg-neon-blue text-black hover:scale-[1.02] shadow-xl shadow-neon-blue/20 hover:shadow-neon-blue/40'}`}
                               >
-                                {isSavingAdsense ? 'Salvataggio...' : 'Conferma Impostazioni Google'}
+                                {isSavingAdsense ? 'Sincronizzazione...' : 'Conferma e Salva su Database'}
                               </button>
                            </div>
                         </div>
