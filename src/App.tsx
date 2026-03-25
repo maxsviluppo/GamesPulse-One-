@@ -250,7 +250,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[285px] overflow-hidden bg-black">
+          <div className="absolute top-[72px] left-0 right-0 bottom-[285px] overflow-hidden bg-black">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
@@ -279,7 +279,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[285px] overflow-hidden">
+          <div className="absolute top-[72px] left-0 right-0 bottom-[285px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
@@ -295,7 +295,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-0 left-0 right-0 bottom-[285px] bg-zinc-900/80">
+          <div className="absolute top-[72px] left-0 right-0 bottom-[285px] bg-zinc-900/80">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -1247,44 +1247,52 @@ export default function App() {
         onScroll={handleScroll}
       >
         {(loading && filteredNews.length === 0) || showSplash ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-50">
-            {/* Clean black background, no random image */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-50 overflow-hidden">
+            {/* Ambient Background Glow */}
             <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-black to-zinc-950" />
-            {/* Subtle animated radial glow */}
             <motion.div
-              animate={{ opacity: [0.06, 0.18, 0.06], scale: [1, 1.15, 1] }}
-              transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-              className="absolute w-[500px] h-[500px] rounded-full bg-neon-blue/20 blur-[120px] pointer-events-none"
+              animate={{ opacity: [0.03, 0.12, 0.03], scale: [1, 1.2, 1] }}
+              transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
+              className="absolute w-[800px] h-[800px] rounded-full bg-neon-blue/15 blur-[150px] pointer-events-none"
             />
-            <div className="relative z-10 flex flex-col items-center gap-8">
-              {/* Logo with neon glow pulse */}
+            
+            <div className="relative z-10 flex flex-col items-center gap-10">
+              {/* Logo with pulsating neon blue glow */}
               <motion.img
                 src="/logocompleto.png"
                 alt="GamesPulse"
-                className="w-56 md:w-72"
+                className="w-64 md:w-80 lg:w-[450px] h-auto pointer-events-none"
                 animate={{
                   filter: [
-                    'drop-shadow(0 0 6px rgba(0,243,255,0.0))',
-                    'drop-shadow(0 0 32px rgba(0,243,255,0.75))',
-                    'drop-shadow(0 0 6px rgba(0,243,255,0.0))'
+                    'drop-shadow(0 0 10px rgba(0,243,255,0.1))',
+                    'drop-shadow(0 0 45px rgba(0,243,255,0.85))',
+                    'drop-shadow(0 0 10px rgba(0,243,255,0.1))'
                   ],
-                  scale: [1, 1.03, 1]
+                  scale: [1, 1.02, 1]
                 }}
-                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
               />
-              {/* Loading indicator */}
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex gap-2">
-                  {[0,1,2].map(i => (
-                    <motion.div
-                      key={i}
-                      className="w-2 h-2 rounded-full bg-neon-blue"
-                      animate={{ opacity: [0.2, 1, 0.2], y: [0, -5, 0] }}
-                      transition={{ repeat: Infinity, duration: 1.4, delay: i * 0.25, ease: 'easeInOut' }}
-                    />
-                  ))}
-                </div>
-                <span className="text-white/30 font-bold uppercase tracking-[0.4em] text-[10px]">Caricamento Notizie</span>
+              
+              {/* Animated Text Indicator */}
+              <div className="flex flex-col items-center gap-4">
+                 <motion.span 
+                    animate={{ opacity: [0.4, 0.9, 0.4] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                    className="text-white/60 font-bold tracking-[0.6em] text-[11px] md:text-sm font-display uppercase drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]"
+                 >
+                    Caricamento Notizie
+                 </motion.span>
+                 
+                 <div className="flex gap-2.5">
+                    {[0,1,2].map(i => (
+                      <motion.div
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-neon-blue shadow-[0_0_10px_rgba(0,243,255,0.8)]"
+                        animate={{ opacity: [0.2, 1, 0.2], y: [0, -6, 0] }}
+                        transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2, ease: 'easeInOut' }}
+                      />
+                    ))}
+                 </div>
               </div>
             </div>
           </div>
