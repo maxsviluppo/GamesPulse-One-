@@ -10,8 +10,7 @@ import {
   Newspaper, 
   Trophy, 
   Settings, 
-  Search, 
-  RefreshCw,
+  Search,
   ExternalLink,
   ChevronRight,
   Monitor,
@@ -41,7 +40,7 @@ import {
   FileText,
   Save,
   HardDrive,
-  RefreshCw as RefreshIcon
+  RefreshCw
 } from 'lucide-react';
 import { 
   auth, 
@@ -251,7 +250,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[180px] overflow-hidden bg-black">
+          <div className="absolute top-0 left-0 right-0 bottom-[210px] overflow-hidden bg-black">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
@@ -279,7 +278,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[180px] overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 bottom-[210px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
@@ -294,7 +293,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-0 left-0 right-0 bottom-[180px] bg-zinc-900/80">
+          <div className="absolute top-0 left-0 right-0 bottom-[210px] bg-zinc-900/80">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -1191,16 +1190,27 @@ export default function App() {
                 )}
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4">
-                <Gamepad2 size={48} className="opacity-20" />
-                <p className="text-sm font-bold tracking-widest">
-                  {selectedCategory === 'favorites' ? 'NO FAVORITES SAVED' : 'NO INTEL FOUND'}
-                </p>
+              <div className="flex flex-col items-center justify-center h-full gap-8 px-12 text-center">
+                <motion.img 
+                  src="/logocompleto.png" 
+                  alt="GamesPulse" 
+                  className="w-32 opacity-20 grayscale brightness-50"
+                  animate={{ scale: [1, 1.02, 1], opacity: [0.15, 0.2, 0.15] }}
+                  transition={{ repeat: Infinity, duration: 4 }}
+                />
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black tracking-[0.4em] text-white/20 uppercase">
+                    {selectedCategory === 'favorites' ? 'NESSUNA NOTIZIA SALVATA' : 'DATABASE IN AGGIORNAMENTO'}
+                  </p>
+                  <p className="text-[9px] text-white/10 uppercase tracking-widest font-bold">
+                    I NOSTRI TECNICI STANNO SINCRONIZZANDO LE ULTIME INFORMAZIONI
+                  </p>
+                </div>
                 <button 
                   onClick={() => setSelectedCategory('all')}
-                  className="text-xs text-neon-blue underline"
+                  className="px-6 py-2 rounded-full border border-white/5 text-[9px] font-bold text-neon-blue uppercase tracking-widest hover:bg-neon-blue/5 transition-all"
                 >
-                  {selectedCategory === 'favorites' ? 'Browse all news' : 'Clear filters'}
+                  {selectedCategory === 'favorites' ? 'Sfoglia tutte le notizie' : 'Torna alla Home'}
                 </button>
               </div>
             )}
@@ -1954,7 +1964,7 @@ export default function App() {
                                  isSavingAdsense ? 'bg-zinc-800 text-white/50' : 'bg-neon-blue text-black hover:bg-neon-blue/80'
                                }`}
                              >
-                               {isSavingAdsense ? <RefreshIcon size={16} className="animate-spin" /> : <Save size={16} />}
+                               {isSavingAdsense ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
                                Salva AdSense
                              </button>
                           </div>
