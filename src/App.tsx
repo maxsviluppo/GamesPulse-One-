@@ -51,7 +51,8 @@ import {
   User as FirebaseUser,
   handleFirestoreError,
   OperationType,
-  testConnection
+  testConnection,
+  signInAnonymously
 } from './firebase';
 import { 
   doc, 
@@ -250,11 +251,11 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-[72px] left-0 right-0 bottom-[285px] overflow-hidden bg-black">
+          <div className="absolute top-[82px] left-4 right-4 bottom-[295px] overflow-hidden bg-black rounded-3xl shadow-2xl">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
-                className="w-full h-full scale-[1.5] pointer-events-none brightness-[1.05]"
+                className="w-full h-full scale-[1.5] pointer-events-none brightness-[1.1]"
                 allow="autoplay; encrypted-media"
                 title={item.title}
                 onError={() => setVideoError(true)}
@@ -271,15 +272,13 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               />
             )}
             <div className="absolute inset-0 bg-transparent"></div>
-            {/* Vignette radiale perimetrale */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.55)_100%)]"></div>
-            {/* Vignette top sottile */}
-            <div className="absolute top-0 left-0 right-0 h-[55%] bg-gradient-to-b from-black/75 via-black/20 to-transparent"></div>
-            {/* Vignette bottom per leggibilità testo */}
-            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
+            {/* Sfumatura superiore delicata */}
+            <div className="absolute top-0 left-0 right-0 h-[35%] bg-gradient-to-b from-black/50 via-black/5 to-transparent"></div>
+            {/* Sfumatura inferiore delicata */}
+            <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-[72px] left-0 right-0 bottom-[285px] overflow-hidden">
+          <div className="absolute top-[82px] left-4 right-4 bottom-[295px] overflow-hidden rounded-3xl shadow-2xl">
             <img 
               src={item.image} 
               alt={item.title}
@@ -287,15 +286,13 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               referrerPolicy="no-referrer"
               onError={() => setImageError(true)}
             />
-            {/* Vignette radiale perimetrale */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.55)_100%)]"></div>
-            {/* Vignette top sottile */}
-            <div className="absolute top-0 left-0 right-0 h-[55%] bg-gradient-to-b from-black/75 via-black/20 to-transparent"></div>
-            {/* Vignette bottom per leggibilità testo */}
-            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
+            {/* Sfumatura superiore delicata */}
+            <div className="absolute top-0 left-0 right-0 h-[35%] bg-gradient-to-b from-black/50 via-black/5 to-transparent"></div>
+            {/* Sfumatura inferiore delicata */}
+            <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-[72px] left-0 right-0 bottom-[285px] bg-zinc-900/80">
+          <div className="absolute top-[82px] left-4 right-4 bottom-[295px] bg-zinc-900/80 rounded-3xl overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -493,6 +490,16 @@ export default function App() {
     enabled: true 
   });
   const [saveStatus, setSaveStatus] = useState<{type: 'success' | 'error' | null, message: string}>({ type: null, message: '' });
+
+  // Auto-hide save status
+  useEffect(() => {
+    if (saveStatus.type) {
+      const timer = setTimeout(() => {
+        setSaveStatus({ type: null, message: '' });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveStatus]);
   const [isSavingAdsense, setIsSavingAdsense] = useState(false);
   const [isSavingSeo, setIsSavingSeo] = useState(false);
   const [trafficStats, setTrafficStats] = useState<any>({
@@ -805,8 +812,10 @@ export default function App() {
       });
       // Save to Firestore (Permanent)
       await setDoc(doc(db, 'admin_configs', 'seo'), newConfigs);
-    } catch (e) {
+      setSaveStatus({ type: 'success', message: 'SEO salvato!' });
+    } catch (e: any) {
       console.error("Error saving SEO:", e);
+      setSaveStatus({ type: 'error', message: 'Errore DB: ' + (e.message || 'Permesso negato') });
     } finally {
       setIsSavingSeo(false);
     }
@@ -897,6 +906,8 @@ export default function App() {
       setShowAdminLogin(false);
       setShowAdminDashboard(true);
       setAdminError('');
+      // Trigger anonymous sign in to satisfy Firestore rules
+      signInAnonymously(auth).catch(err => console.error("Firebase auth error:", err));
     } else {
       setAdminError('Credenziali non valide');
     }
@@ -976,27 +987,25 @@ export default function App() {
   const saveAdSense = async (config: any) => {
     setIsSavingAdsense(true);
     try {
-      await fetch('/api/config/adsense', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      });
       await setDoc(doc(db, 'admin_configs', 'adsense'), config);
       setAdsenseConfig(config);
-    } catch (e) { console.error(e); }
+      setSaveStatus({ type: 'success', message: 'AdSense salvato!' });
+    } catch (e: any) { 
+      console.error(e); 
+      setSaveStatus({ type: 'error', message: 'Errore AdSense: ' + (e.message || 'Permesso') });
+    }
     finally { setIsSavingAdsense(false); }
   };
 
   const saveAnalytics = async (config: any) => {
     try {
-      await fetch('/api/config/analytics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      });
       await setDoc(doc(db, 'admin_configs', 'analytics'), config);
       setAnalyticsConfig(config);
-    } catch (e) { console.error(e); }
+      setSaveStatus({ type: 'success', message: 'Analytics salvato!' });
+    } catch (e: any) { 
+      console.error(e); 
+      setSaveStatus({ type: 'error', message: 'Errore Analytics: ' + (e.message || 'Permesso') });
+    }
   };
 
   const saveAllConfigs = async () => {
