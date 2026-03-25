@@ -512,17 +512,22 @@ export default function App() {
   useEffect(() => {
     setSplashBg(SPLASH_BGS[Math.floor(Math.random() * SPLASH_BGS.length)]);
     
-    // Ensure splash stays at least 3 seconds, but waits for loading to finish
-    const minTimePromise = new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // We'll hide it once BOTH loading is false AND 3 seconds have passed
-    // But since fetchNews is called immediately, we wait for it
+    // Safety Net: If after 8s we are still loading, force open the site
+    const safetyTimer = setTimeout(() => {
+      if (showSplash) {
+        console.warn("Safety net triggered: forcing site open");
+        setLoading(false);
+        setShowSplash(false);
+      }
+    }, 8000);
+
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   // Monitor loading to hide splash
   useEffect(() => {
     if (!loading && showSplash) {
-      const timer = setTimeout(() => setShowSplash(false), 500); // Small grace period
+      const timer = setTimeout(() => setShowSplash(false), 200); // Small grace period
       return () => clearTimeout(timer);
     }
   }, [loading]);
