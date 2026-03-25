@@ -245,12 +245,12 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       {/* Front Side */}
       <div 
         style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'translateZ(1px)', pointerEvents: isFlipped ? 'none' : 'auto' }}
-        className={`absolute inset-0 group bg-zinc-950 overflow-hidden transition-all duration-500 flex flex-col cursor-pointer hover:scale-[1.01] z-10 ${NEON_COLORS[index % NEON_COLORS.length]}`}
+        className="absolute inset-0 group bg-zinc-950 overflow-hidden transition-all duration-500 flex flex-col cursor-pointer hover:scale-[1.01] z-10"
         onClick={handleFlip}
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[210px] overflow-hidden bg-black">
+          <div className="absolute top-0 left-0 right-0 bottom-[240px] overflow-hidden bg-black">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
@@ -266,7 +266,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
                 muted
                 loop
                 playsInline
-                className="w-full h-full object-cover brightness-[1.3] contrast-[1.1]"
+                className="w-full h-full object-cover brightness-150 contrast-125"
                 onError={() => setVideoError(true)}
               />
             )}
@@ -278,11 +278,11 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-0 left-0 right-0 bottom-[210px] overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 bottom-[240px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100 brightness-125"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100 brightness-150 contrast-125"
               referrerPolicy="no-referrer"
               onError={() => setImageError(true)}
             />
@@ -293,7 +293,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-0 left-0 right-0 bottom-[210px] bg-zinc-900/80">
+          <div className="absolute top-0 left-0 right-0 bottom-[240px] bg-zinc-900/80">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -381,9 +381,41 @@ export default function App() {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminError, setAdminError] = useState('');
   const [adminTab, setAdminTab] = useState<'seo' | 'sources' | 'analytics' | 'adsense'>('seo');
-  const [newsSources, setNewsSources] = useState<Source[]>([]);
+  const [newsSources, setNewsSources] = useState<Source[]>([
+    { "id": "gp-001", "url": "https://it.ign.com/feed.xml", "cat": "News", "name": "IGN IT", "active": true },
+    { "id": "gp-002", "url": "https://multiplayer.it/feed/", "cat": "News", "name": "Multiplayer", "active": true },
+    { "id": "gp-003", "url": "https://www.everyeye.it/feed/", "cat": "News", "name": "Everyeye", "active": true },
+    { "id": "gp-006", "url": "https://feeds.feedburner.com/ign/all", "cat": "News", "name": "IGN Global", "active": true },
+    { "id": "gp-011", "url": "https://www.pcgamer.com/rss", "cat": "PC", "name": "PC Gamer", "active": true },
+    { "id": "gp-013", "url": "https://www.pushsquare.com/feeds/latest", "cat": "PS5", "name": "Push Square", "active": true },
+    { "id": "gp-014", "url": "https://www.purexbox.com/feeds/latest", "cat": "Xbox", "name": "Pure Xbox", "active": true },
+    { "id": "gp-012", "url": "https://www.nintendolife.com/feeds/latest", "cat": "Switch", "name": "Nintendo Life", "active": true },
+    { "id": "gp-016", "url": "https://www.theverge.com/rss/index.xml", "cat": "Tech", "name": "The Verge", "active": true },
+    { "id": "gp-020", "url": "https://www.hdblog.it/feed/", "cat": "Tech", "name": "HD Blog", "active": true }
+  ]);
   const [newSource, setNewSource] = useState({ name: '', url: '', cat: 'News' });
-  const [seoConfigs, setSeoConfigs] = useState<any>({});
+  const [seoConfigs, setSeoConfigs] = useState<any>({
+    "all": {
+      "title": "GamesPulse | Ultime Notizie Gaming, PS5, Xbox, Nintendo & PC",
+      "description": "Resta aggiornato con le ultime notizie dal mondo dei videogiochi. GamesPulse aggrega i migliori feed per PS5, Xbox Series X, Switch e PC in tempo reale.",
+      "keywords": "notizie gaming, news videogiochi, ps5, xbox, nintendo switch, pc gaming, esports, recensioni giochi, anteprime, trailer"
+    },
+    "playstation": {
+      "title": "News PS5 & PS4 | Ultime Novità PlayStation | GamesPulse",
+      "description": "Tutte le ultime notizie su PlayStation 5 e PS4. Esclusive Sony, aggiornamenti PS Plus, recensioni e anteprime dei titoli più attesi.",
+      "keywords": "playstation 5, ps5 news, sony, ps plus, esclusive playstation, horizon, god of war"
+    },
+    "xbox": {
+      "title": "News Xbox Series X|S & Game Pass | GamesPulse",
+      "description": "Scopri le ultime novità dal mondo Xbox. Aggiornamenti su Xbox Game Pass, acquisizioni Microsoft, Halo, Forza e molto altro.",
+      "keywords": "xbox, xbox series x, game pass, microsoft, halo, forza horizon"
+    },
+    "nintendo": {
+      "title": "News Nintendo Switch | Ultime da Nintendo Life | GamesPulse",
+      "description": "Aggiornamenti costanti su Nintendo Switch, Mario, Zelda e Pokémon. Scopri le ultime uscite e i rumor sulla prossima console Nintendo.",
+      "keywords": "nintendo switch, zelda, super mario, pokemon, switch 2"
+    }
+  });
   const [adsenseConfig, setAdsenseConfig] = useState<any>({ enabled: false, script: '', metaTag: '', adsTxt: '' });
   const [analyticsConfig, setAnalyticsConfig] = useState<any>({ trackingId: '', verificationTag: '', enabled: false });
   const [saveStatus, setSaveStatus] = useState<{type: 'success' | 'error' | null, message: string}>({ type: null, message: '' });
@@ -1146,15 +1178,31 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             />
-            <div className="relative z-10 flex flex-col items-center gap-6">
-              <motion.img 
-                src="/logocompleto.png" 
-                alt="GamesPulse Logo" 
-                className="w-48 drop-shadow-[0_0_20px_rgba(0,194,255,0.4)]"
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-              />
-              <span className="text-neon-blue font-bold uppercase tracking-[0.3em] text-[10px] animate-pulse">Syncing Intel...</span>
+            <div className="relative z-10 flex flex-col items-center gap-2">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ 
+                  opacity: [0.5, 1, 0.5],
+                  scale: [1, 1.05, 1],
+                  filter: [
+                    'drop-shadow(0 0 10px rgba(0,243,255,0.2))',
+                    'drop-shadow(0 0 30px rgba(0,243,255,0.6))',
+                    'drop-shadow(0 0 10px rgba(0,243,255,0.2))'
+                  ]
+                }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                className="relative"
+              >
+                <img 
+                  src="/logocompleto.png" 
+                  alt="GamesPulse" 
+                  className="w-56 md:w-72"
+                />
+              </motion.div>
+              <div className="mt-8 flex flex-col items-center gap-1">
+                <span className="text-neon-blue font-black uppercase tracking-[0.6em] text-[8px] md:text-[10px] opacity-40">Initializing Neural Link</span>
+                <div className="w-24 h-[1px] bg-gradient-to-r from-transparent via-neon-blue/40 to-transparent"></div>
+              </div>
             </div>
           </div>
         ) : (

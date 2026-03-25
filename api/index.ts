@@ -48,15 +48,27 @@ function loadSources() {
     console.error("Error loading sources:", e);
   }
   
-  // Default sources if file doesn't exist or is unreadable
+  // Default sources if file doesn't exist or is unreadable (Production Ready)
   return [
     { "id": "gp-001", "url": "https://it.ign.com/feed.xml", "cat": "News", "name": "IGN IT", "active": true },
     { "id": "gp-002", "url": "https://multiplayer.it/feed/", "cat": "News", "name": "Multiplayer", "active": true },
-    { "id": "gp-011", "url": "https://www.everyeye.it/feed/", "cat": "News", "name": "Everyeye", "active": true },
+    { "id": "gp-003", "url": "https://www.everyeye.it/feed/", "cat": "News", "name": "Everyeye", "active": true },
+    { "id": "gp-004", "url": "https://www.gamesource.it/feed/", "cat": "News", "name": "GameSource", "active": true },
+    { "id": "gp-005", "url": "https://www.spaziogames.it/feed/", "cat": "News", "name": "Spaziogames", "active": true },
+    { "id": "gp-006", "url": "https://feeds.feedburner.com/ign/all", "cat": "News", "name": "IGN Global", "active": true },
+    { "id": "gp-007", "url": "https://www.gamespot.com/feeds/mashup/", "cat": "News", "name": "GameSpot", "active": true },
+    { "id": "gp-011", "url": "https://www.pcgamer.com/rss", "cat": "PC", "name": "PC Gamer", "active": true },
+    { "id": "gp-012", "url": "https://www.nintendolife.com/feeds/latest", "cat": "Switch", "name": "Nintendo Life", "active": true },
     { "id": "gp-013", "url": "https://www.pushsquare.com/feeds/latest", "cat": "PS5", "name": "Push Square", "active": true },
     { "id": "gp-014", "url": "https://www.purexbox.com/feeds/latest", "cat": "Xbox", "name": "Pure Xbox", "active": true },
-    { "id": "gp-012", "url": "https://www.nintendolife.com/feeds/latest", "cat": "Switch", "name": "Nintendo Life", "active": true },
-    { "id": "gp-016", "url": "https://www.theverge.com/rss/index.xml", "cat": "Tech", "name": "The Verge", "active": true }
+    { "id": "gp-015", "url": "https://www.gamesindustry.biz/feed", "cat": "Industry", "name": "GamesIndustry", "active": true },
+    { "id": "gp-016", "url": "https://www.theverge.com/rss/index.xml", "cat": "Tech", "name": "The Verge", "active": true },
+    { "id": "gp-017", "url": "https://www.engadget.com/rss.xml", "cat": "Tech", "name": "Engadget", "active": true },
+    { "id": "gp-020", "url": "https://www.hdblog.it/feed/", "cat": "Tech", "name": "HD Blog", "active": true },
+    { "id": "gp-021", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC-2Y8L_huKU29enH8vGZ9yA", "cat": "PS5", "name": "PlayStation Video", "active": true },
+    { "id": "gp-022", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCjBp_7RuDBUYbd1LegWEJ8g", "cat": "Xbox", "name": "Xbox Video", "active": true },
+    { "id": "gp-023", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6f_u6p_GZ_vX_Z_B_6Q8sw", "cat": "Switch", "name": "Nintendo IT Video", "active": true },
+    { "id": "gp-025", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9PBzalIcEQCsiIkq36PyUA", "cat": "Tech", "name": "Digital Foundry", "active": true }
   ];
 }
 
