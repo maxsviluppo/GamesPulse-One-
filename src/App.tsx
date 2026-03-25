@@ -249,7 +249,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-[77px] left-[-5px] right-[-5px] bottom-[285px] overflow-hidden bg-black shadow-2xl">
+          <div className="absolute top-[75px] left-0 right-0 bottom-[220px] overflow-hidden bg-black shadow-2xl">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
@@ -273,10 +273,10 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             {/* Sfumatura superiore delicata */}
             <div className="absolute top-0 left-0 right-0 h-[35%] bg-gradient-to-b from-black/50 via-black/5 to-transparent"></div>
             {/* Sfumatura inferiore delicata */}
-            <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-[77px] left-[-5px] right-[-5px] bottom-[285px] overflow-hidden shadow-2xl">
+          <div className="absolute top-[75px] left-0 right-0 bottom-[220px] overflow-hidden shadow-2xl">
             <img 
               src={item.image} 
               alt={item.title}
@@ -287,10 +287,10 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             {/* Sfumatura superiore delicata */}
             <div className="absolute top-0 left-0 right-0 h-[35%] bg-gradient-to-b from-black/50 via-black/5 to-transparent"></div>
             {/* Sfumatura inferiore delicata */}
-            <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-[77px] left-[-5px] right-[-5px] bottom-[285px] bg-zinc-900/80 overflow-hidden">
+          <div className="absolute top-[75px] left-0 right-0 bottom-[220px] bg-zinc-900/80 overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
