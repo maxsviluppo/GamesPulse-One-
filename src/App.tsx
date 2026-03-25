@@ -250,11 +250,11 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-[10px] left-0 right-0 bottom-[260px] overflow-hidden bg-black">
+          <div className="absolute top-[30px] left-0 right-0 bottom-[285px] overflow-hidden bg-black">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
-                className="w-full h-full scale-[1.5] pointer-events-none brightness-[1.3] contrast-[1.1]"
+                className="w-full h-full scale-[1.5] pointer-events-none brightness-[1.05]"
                 allow="autoplay; encrypted-media"
                 title={item.title}
                 onError={() => setVideoError(true)}
@@ -266,34 +266,36 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
                 muted
                 loop
                 playsInline
-                className="w-full h-full object-cover brightness-150 contrast-125"
+                className="w-full h-full object-cover brightness-110"
                 onError={() => setVideoError(true)}
               />
             )}
             <div className="absolute inset-0 bg-transparent"></div>
-            {/* Vignette top: +20% stronger, +5% higher */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.25)_100%)]"></div>
-            <div className="absolute top-0 left-0 right-0 h-[45%] bg-gradient-to-b from-black/30 via-black/10 to-transparent"></div>
-            {/* Vignette bottom: -10% softer, -5% lower */}
-            <div className="absolute bottom-0 left-0 right-0 h-[55%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+            {/* Vignette radiale perimetrale */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.55)_100%)]"></div>
+            {/* Vignette top sottile */}
+            <div className="absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-black/40 via-black/10 to-transparent"></div>
+            {/* Vignette bottom per leggibilità testo */}
+            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-[10px] left-0 right-0 bottom-[260px] overflow-hidden">
+          <div className="absolute top-[30px] left-0 right-0 bottom-[285px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100 brightness-150 contrast-125"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-110"
               referrerPolicy="no-referrer"
               onError={() => setImageError(true)}
             />
-            {/* Vignette top: +20% stronger, +5% higher */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_30%,_rgba(0,0,0,0.4)_100%)]"></div>
-            <div className="absolute top-0 left-0 right-0 h-[45%] bg-gradient-to-b from-black/30 via-black/10 to-transparent"></div>
-            {/* Vignette bottom: -10% softer, -5% lower */}
-            <div className="absolute bottom-0 left-0 right-0 h-[55%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+            {/* Vignette radiale perimetrale */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.55)_100%)]"></div>
+            {/* Vignette top sottile */}
+            <div className="absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-black/40 via-black/10 to-transparent"></div>
+            {/* Vignette bottom per leggibilità testo */}
+            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-[10px] left-0 right-0 bottom-[260px] bg-zinc-900/80">
+          <div className="absolute top-[30px] left-0 right-0 bottom-[285px] bg-zinc-900/80">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -382,46 +384,120 @@ export default function App() {
   const [adminError, setAdminError] = useState('');
   const [adminTab, setAdminTab] = useState<'seo' | 'sources' | 'analytics' | 'adsense'>('seo');
   const [newsSources, setNewsSources] = useState<Source[]>([
+    // NEWS
     { "id": "gp-001", "url": "https://it.ign.com/feed.xml", "cat": "News", "name": "IGN IT", "active": true },
     { "id": "gp-002", "url": "https://multiplayer.it/feed/", "cat": "News", "name": "Multiplayer", "active": true },
     { "id": "gp-003", "url": "https://www.everyeye.it/feed/", "cat": "News", "name": "Everyeye", "active": true },
+    { "id": "gp-004", "url": "https://www.gamesource.it/feed/", "cat": "News", "name": "GameSource", "active": true },
+    { "id": "gp-005", "url": "https://www.spaziogames.it/feed/", "cat": "News", "name": "Spaziogames", "active": true },
     { "id": "gp-006", "url": "https://feeds.feedburner.com/ign/all", "cat": "News", "name": "IGN Global", "active": true },
+    { "id": "gp-007", "url": "https://www.gamespot.com/feeds/mashup/", "cat": "News", "name": "GameSpot", "active": true },
+    { "id": "gp-008", "url": "https://www.eurogamer.net/feed", "cat": "News", "name": "Eurogamer", "active": true },
+    { "id": "gp-009", "url": "https://kotaku.com/rss", "cat": "News", "name": "Kotaku", "active": true },
+    { "id": "gp-010", "url": "https://www.polygon.com/rss/index.xml", "cat": "News", "name": "Polygon", "active": true },
+    // PC
     { "id": "gp-011", "url": "https://www.pcgamer.com/rss", "cat": "PC", "name": "PC Gamer", "active": true },
+    { "id": "gp-011b", "url": "https://www.rockpapershotgun.com/feed", "cat": "PC", "name": "Rock Paper Shotgun", "active": true },
+    // PS5
     { "id": "gp-013", "url": "https://www.pushsquare.com/feeds/latest", "cat": "PS5", "name": "Push Square", "active": true },
+    { "id": "gp-021", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC-2Y8L_huKU29enH8vGZ9yA", "cat": "PS5", "name": "PlayStation Video", "active": true },
+    // Xbox
     { "id": "gp-014", "url": "https://www.purexbox.com/feeds/latest", "cat": "Xbox", "name": "Pure Xbox", "active": true },
+    { "id": "gp-022", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCjBp_7RuDBUYbd1LegWEJ8g", "cat": "Xbox", "name": "Xbox Video", "active": true },
+    // Switch
     { "id": "gp-012", "url": "https://www.nintendolife.com/feeds/latest", "cat": "Switch", "name": "Nintendo Life", "active": true },
+    { "id": "gp-023", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6f_u6p_GZ_vX_Z_B_6Q8sw", "cat": "Switch", "name": "Nintendo IT Video", "active": true },
+    // Tech
     { "id": "gp-016", "url": "https://www.theverge.com/rss/index.xml", "cat": "Tech", "name": "The Verge", "active": true },
-    { "id": "gp-020", "url": "https://www.hdblog.it/feed/", "cat": "Tech", "name": "HD Blog", "active": true }
+    { "id": "gp-017", "url": "https://www.engadget.com/rss.xml", "cat": "Tech", "name": "Engadget", "active": true },
+    { "id": "gp-019", "url": "https://feeds.macrumors.com/MacRumors-All", "cat": "Tech", "name": "MacRumors", "active": true },
+    { "id": "gp-020", "url": "https://www.hdblog.it/feed/", "cat": "Tech", "name": "HD Blog", "active": true },
+    { "id": "gp-025", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9PBzalIcEQCsiIkq36PyUA", "cat": "Tech", "name": "Digital Foundry", "active": true },
+    // Mobile
+    { "id": "gp-018", "url": "https://www.androidcentral.com/rss.xml", "cat": "Mobile", "name": "Android Central", "active": true },
+    // Industry
+    { "id": "gp-015", "url": "https://www.gamesindustry.biz/feed", "cat": "Industry", "name": "GamesIndustry", "active": true },
+    // Videos
+    { "id": "gp-026", "url": "https://multiplayer.it/feed/video/", "cat": "Videos", "name": "Multiplayer Video", "active": true },
+    { "id": "gp-027", "url": "http://feeds.feedburner.com/ign/video-reviews", "cat": "Videos", "name": "IGN Video Reviews", "active": true },
+    { "id": "gp-028", "url": "https://www.gamespot.com/feeds/video/", "cat": "Videos", "name": "GameSpot Video", "active": true },
+    { "id": "gp-024", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCm4WlDgi7QAsitnybaid2vA", "cat": "Videos", "name": "GameTrailers", "active": true },
   ]);
   const [newSource, setNewSource] = useState({ name: '', url: '', cat: 'News' });
   const [seoConfigs, setSeoConfigs] = useState<any>({
     "all": {
       "title": "GamesPulse | Ultime Notizie Gaming, PS5, Xbox, Nintendo & PC",
       "description": "Resta aggiornato con le ultime notizie dal mondo dei videogiochi. GamesPulse aggrega i migliori feed per PS5, Xbox Series X, Switch e PC in tempo reale.",
-      "keywords": "notizie gaming, news videogiochi, ps5, xbox, nintendo switch, pc gaming, esports, recensioni giochi, anteprime, trailer"
+      "keywords": "notizie gaming, news videogiochi, ps5, xbox, nintendo switch, pc gaming, esports, recensioni giochi, anteprime, trailer, gamespulse"
+    },
+    "favorites": {
+      "title": "I Tuoi Preferiti | GamesPulse Gaming News",
+      "description": "Accedi alle notizie gaming che hai salvato su GamesPulse. Non perdere mai gli ultimi aggiornamenti sui tuoi titoli preferiti.",
+      "keywords": "preferiti gaming, news salvate, watchlist gaming, gaming intel, playlist notizie giochi"
     },
     "playstation": {
-      "title": "News PS5 & PS4 | Ultime Novità PlayStation | GamesPulse",
+      "title": "News PS5 & PS4 | Nuovi Giochi PlayStation | GamesPulse",
       "description": "Tutte le ultime notizie su PlayStation 5 e PS4. Esclusive Sony, aggiornamenti PS Plus, recensioni e anteprime dei titoli più attesi.",
-      "keywords": "playstation 5, ps5 news, sony, ps plus, esclusive playstation, horizon, god of war"
+      "keywords": "playstation 5, ps5 news, sony exclusive, ps plus, horizon forbidden west, god of war ragnarok, spider-man 2, playstation vr2, push square"
     },
     "xbox": {
-      "title": "News Xbox Series X|S & Game Pass | GamesPulse",
+      "title": "News Xbox Series X|S & Game Pass | Microsoft Gaming | GamesPulse",
       "description": "Scopri le ultime novità dal mondo Xbox. Aggiornamenti su Xbox Game Pass, acquisizioni Microsoft, Halo, Forza e molto altro.",
-      "keywords": "xbox, xbox series x, game pass, microsoft, halo, forza horizon"
+      "keywords": "xbox series x, xbox series s, game pass, microsoft gaming, halo infinite, forza horizon, starfield, fable, avowed, xbox news"
     },
     "nintendo": {
-      "title": "News Nintendo Switch | Ultime da Nintendo Life | GamesPulse",
-      "description": "Aggiornamenti costanti su Nintendo Switch, Mario, Zelda e Pokémon. Scopri le ultime uscite e i rumor sulla prossima console Nintendo.",
-      "keywords": "nintendo switch, zelda, super mario, pokemon, switch 2"
+      "title": "News Nintendo Switch 2 | Mario, Zelda & Pokémon | GamesPulse",
+      "description": "Aggiornamenti costanti su Nintendo Switch e Switch 2, Mario, Zelda e Pokémon. Scopri le ultime uscite e i rumor sulla prossima console Nintendo.",
+      "keywords": "nintendo switch 2, switch 2, zelda tears of the kingdom, super mario bros, pokemon scarlet violet, metroid prime, indie switch, nintendo direct"
+    },
+    "pc": {
+      "title": "PC Gaming News | Hardware, Steam & Epic Games | GamesPulse",
+      "description": "Le migliori notizie per il PC Gaming. Recensioni CPU e GPU, offerte Steam, novità Epic Games Store, modding e benchmark delle ultime schede video.",
+      "keywords": "pc gaming, steam deals, epic games store, rtx 5090, amd rx 9000, intel arc, hardware gaming, modding, giveaway giochi pc, gaming rig"
+    },
+    "tech": {
+      "title": "Tech & Hardware Gaming | AI, GPU e Console | GamesPulse",
+      "description": "L'incrocio tra tecnologia e gaming. Notizie su Intelligenza Artificiale applicata ai giochi, Digital Foundry, nuove architetture CPU/GPU e smartphone gaming.",
+      "keywords": "tecnologia gaming, hardware news, intelligenza artificiale giochi, gpu benchmark, digital foundry analysis, hdblog, gadget tech gaming, ray tracing, dlss, fsr"
+    },
+    "mobile": {
+      "title": "Mobile Gaming News | iOS & Android | GamesPulse",
+      "description": "Tutto sui giochi mobili. News da App Store e Google Play, recensioni smartphone gaming, controller mobile e aggiornamenti sui titoli più giocati.",
+      "keywords": "mobile gaming, android gaming news, ios gaming, iphone gaming, genshin impact mobile, pubg mobile, diablo immortal, controller mobile, gaming smartphone"
+    },
+    "videos": {
+      "title": "Video Gaming & Trailer | Gameplay e Recensioni Video | GamesPulse",
+      "description": "I migliori video dal mondo gaming: trailer di annunci, gameplay esclusivi, recensioni video e coverage degli eventi come The Game Awards e Nintendo Direct.",
+      "keywords": "video gaming, trailer giochi 2025, gameplay reveal, game awards trailer, nintendo direct video, ign video reviews, gamespot video, digital foundry video"
+    },
+    "industry": {
+      "title": "Gaming Industry News | Business, Acquisizioni & Sviluppatori | GamesPulse",
+      "description": "Le notizie dal settore dell'industria videoludica: acquisizioni, licenziamenti, rapporti di vendita, annunci di publisher e notizie finanziarie sul gaming.",
+      "keywords": "games industry news, acquisizioni gaming, microsoft activision, sony studio, take-two, ea acquisizioni, layoffs gaming, sviluppatori indie, gamesindustry biz"
     }
   });
-  const [adsenseConfig, setAdsenseConfig] = useState<any>({ enabled: false, script: '', metaTag: '', adsTxt: '' });
+  const [adsenseConfig, setAdsenseConfig] = useState<any>({
+    enabled: false, script: '', metaTag: '', adsTxt: '',
+    stats: {
+      earnings: [0, 0, 0, 0, 0, 0, 0],
+      clicks: [0, 0, 0, 0, 0, 0, 0],
+      impressions: [0, 0, 0, 0, 0, 0, 0],
+      ctr: [0, 0, 0, 0, 0, 0, 0],
+      labels: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'],
+      totalEarnings: 0, totalClicks: 0, totalImpressions: 0, avgCtr: 0
+    }
+  });
   const [analyticsConfig, setAnalyticsConfig] = useState<any>({ trackingId: '', verificationTag: '', enabled: false });
   const [saveStatus, setSaveStatus] = useState<{type: 'success' | 'error' | null, message: string}>({ type: null, message: '' });
   const [isSavingAdsense, setIsSavingAdsense] = useState(false);
   const [isSavingSeo, setIsSavingSeo] = useState(false);
-  const [trafficStats, setTrafficStats] = useState<any>({});
+  const [trafficStats, setTrafficStats] = useState<any>({
+    today: 0, week: 0, month: 0, total: 0,
+    pageviews: [0, 0, 0, 0, 0, 0, 0],
+    sessions: [0, 0, 0, 0, 0, 0, 0],
+    labels: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'],
+    topPages: [], topCountries: [], deviceBreakdown: { mobile: 0, desktop: 0, tablet: 0 }
+  });
   const [feedCategoryFilter, setFeedCategoryFilter] = useState('News');
 
   const SPLASH_BGS = [
@@ -1166,14 +1242,18 @@ export default function App() {
         className="absolute inset-0 overflow-y-auto snap-y snap-mandatory hide-scrollbar h-full w-full z-0"
         onScroll={handleScroll}
       >
-        {loading && filteredNews.length === 0 && !showSplash ? (
+        {(loading && filteredNews.length === 0) || showSplash ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black overflow-hidden font-header z-50">
-            <motion.div 
-              className="absolute inset-0 bg-cover bg-center brightness-[0.2] blur-md scale-110"
-              style={{ backgroundImage: `url(${splashBg})` }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            />
+            {splashBg ? (
+              <motion.div 
+                className="absolute inset-0 bg-cover bg-center brightness-[0.2] blur-md scale-110"
+                style={{ backgroundImage: `url(${splashBg})` }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black" />
+            )}
             <div className="relative z-10 flex flex-col items-center gap-0">
               {/* Outer glow ring */}
               <motion.div
@@ -1977,56 +2057,163 @@ export default function App() {
                   {/* Tab: AdSense */}
                   {adminTab === 'adsense' && (
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
-                       <div className="bg-zinc-900 border border-white/10 rounded-3xl p-10">
-                          <header className="flex items-center gap-4 mb-10">
-                             <div className="w-12 h-12 rounded-2xl bg-neon-blue/10 flex items-center justify-center">
-                               <Settings size={24} className="text-neon-blue" />
-                             </div>
-                             <div>
-                               <h3 className="text-xl font-bold text-white uppercase tracking-tight">Google AdSense</h3>
-                               <p className="text-xs text-white/40">Configura snippet e ads.txt</p>
-                             </div>
-                          </header>
+                      {/* Revenue Monitor Dashboard */}
+                      <header className="mb-10 pb-8 border-b border-white/5">
+                        <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Revenue Monitor</h1>
+                        <p className="text-white/40 mt-2 uppercase tracking-[0.3em] text-[10px] font-bold">Monitoraggio proventi pubblicità in tempo reale</p>
+                      </header>
 
-                          <div className="space-y-8">
-                             <div className="flex items-center justify-between p-6 bg-black/40 border border-white/5 rounded-2xl">
-                              <div>
-                                <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mb-1">Stato Monetizzazione</p>
-                                <p className={`text-sm font-bold ${adsenseConfig.enabled ? 'text-emerald-400' : 'text-white/40'}`}>
-                                  {adsenseConfig.enabled ? 'ADSENSE ATTIVO' : 'DISATTIVATO'}
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => setAdsenseConfig({...adsenseConfig, enabled: !adsenseConfig.enabled})}
-                                className={`relative w-14 h-8 rounded-full transition-all ${adsenseConfig.enabled ? 'bg-neon-blue' : 'bg-white/10'}`}
-                              >
-                                <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${adsenseConfig.enabled ? 'right-1' : 'left-1'}`} />
-                              </button>
-                            </div>
+                      {/* KPI Cards */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        {[
+                          { label: 'Guadagni Totali', value: `€${(adsenseConfig.stats?.totalEarnings || 0).toFixed(2)}`, icon: '💰', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                          { label: 'Click Totali', value: (adsenseConfig.stats?.totalClicks || 0).toLocaleString(), icon: '🖱️', color: 'text-neon-blue', bg: 'bg-neon-blue/10 border-neon-blue/20' },
+                          { label: 'Impressioni', value: (adsenseConfig.stats?.totalImpressions || 0).toLocaleString(), icon: '👁️', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+                          { label: 'CTR Medio', value: `${(adsenseConfig.stats?.avgCtr || 0).toFixed(2)}%`, icon: '📈', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+                        ].map((kpi, i) => (
+                          <div key={i} className={`border rounded-2xl p-5 ${kpi.bg}`}>
+                            <div className="text-2xl mb-2">{kpi.icon}</div>
+                            <p className="text-[9px] text-white/30 uppercase tracking-widest font-black mb-1">{kpi.label}</p>
+                            <p className={`text-2xl font-black ${kpi.color}`}>{kpi.value}</p>
+                            <p className="text-[8px] text-white/20 mt-1 uppercase">Connetti AdSense per dati live</p>
+                          </div>
+                        ))}
+                      </div>
 
-                            <div>
-                              <label className="block text-[10px] text-white/30 uppercase tracking-widest font-black mb-3">Snippet Codice</label>
-                              <textarea 
-                                rows={6}
-                                value={adsenseConfig.script || ''}
-                                onChange={e => setAdsenseConfig({...adsenseConfig, script: e.target.value})}
-                                placeholder='<script...' 
-                                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white font-mono text-[10px] focus:outline-none focus:border-neon-blue/30 transition-all resize-none" 
-                              />
-                            </div>
-
-                            <button 
-                               onClick={() => saveAdSense(adsenseConfig)}
-                               disabled={isSavingAdsense}
-                               className={`w-full py-5 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-[11px] font-black flex items-center justify-center gap-3 ${
-                                 isSavingAdsense ? 'bg-zinc-800 text-white/50' : 'bg-neon-blue text-black hover:bg-neon-blue/80'
-                               }`}
-                             >
-                               {isSavingAdsense ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-                               Salva AdSense
-                             </button>
+                      {/* Earnings Chart */}
+                      <div className="bg-zinc-900/60 border border-white/10 rounded-3xl p-8 mb-6">
+                        <div className="flex items-center justify-between mb-8">
+                          <div>
+                            <h3 className="text-lg font-black text-white uppercase tracking-tighter">Guadagni Giornalieri</h3>
+                            <p className="text-[9px] text-white/30 uppercase tracking-widest font-black mt-1">Ultimi 7 giorni — €</p>
+                          </div>
+                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                            <span className="text-[9px] font-black text-emerald-400 uppercase">Revenue</span>
                           </div>
                         </div>
+                        <div className="relative h-44 w-full flex items-end justify-between gap-2 px-2">
+                          {(adsenseConfig.stats?.earnings || [0,0,0,0,0,0,0]).map((v: number, i: number) => {
+                            const max = Math.max(...(adsenseConfig.stats?.earnings || [1]), 1);
+                            const pct = Math.max((v / max) * 100, 4);
+                            return (
+                              <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                                <span className="text-[8px] text-white/40 font-black">€{v.toFixed(2)}</span>
+                                <motion.div
+                                  initial={{ height: 0 }}
+                                  animate={{ height: `${pct}%` }}
+                                  transition={{ duration: 0.7, delay: i * 0.08, ease: 'easeOut' }}
+                                  className="w-full rounded-t-lg bg-gradient-to-t from-emerald-600 to-emerald-400 min-h-[4px]"
+                                />
+                                <span className="text-[8px] text-white/20 font-black">{(adsenseConfig.stats?.labels || ['L','M','M','G','V','S','D'])[i]}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Clicks & Impressions Chart */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div className="bg-zinc-900/60 border border-white/10 rounded-3xl p-6">
+                          <h3 className="text-sm font-black text-white uppercase tracking-tighter mb-1">Click Annunci</h3>
+                          <p className="text-[9px] text-white/30 uppercase tracking-widest font-black mb-6">Ultimi 7 giorni</p>
+                          <div className="relative h-28 w-full flex items-end justify-between gap-1">
+                            {(adsenseConfig.stats?.clicks || [0,0,0,0,0,0,0]).map((v: number, i: number) => {
+                              const max = Math.max(...(adsenseConfig.stats?.clicks || [1]), 1);
+                              return (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                                  <motion.div
+                                    initial={{ height: 0 }}
+                                    animate={{ height: `${Math.max((v/max)*100, 4)}%` }}
+                                    transition={{ duration: 0.6, delay: i * 0.07 }}
+                                    className="w-full rounded-t bg-gradient-to-t from-neon-blue/80 to-neon-blue/40 min-h-[4px]"
+                                  />
+                                  <span className="text-[7px] text-white/20">{(adsenseConfig.stats?.labels || ['L','M','M','G','V','S','D'])[i]}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="bg-zinc-900/60 border border-white/10 rounded-3xl p-6">
+                          <h3 className="text-sm font-black text-white uppercase tracking-tighter mb-1">Impressioni</h3>
+                          <p className="text-[9px] text-white/30 uppercase tracking-widest font-black mb-6">Visualizzazioni ad</p>
+                          <div className="relative h-28 w-full flex items-end justify-between gap-1">
+                            {(adsenseConfig.stats?.impressions || [0,0,0,0,0,0,0]).map((v: number, i: number) => {
+                              const max = Math.max(...(adsenseConfig.stats?.impressions || [1]), 1);
+                              return (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                                  <motion.div
+                                    initial={{ height: 0 }}
+                                    animate={{ height: `${Math.max((v/max)*100, 4)}%` }}
+                                    transition={{ duration: 0.6, delay: i * 0.07 }}
+                                    className="w-full rounded-t bg-gradient-to-t from-amber-500/80 to-amber-400/40 min-h-[4px]"
+                                  />
+                                  <span className="text-[7px] text-white/20">{(adsenseConfig.stats?.labels || ['L','M','M','G','V','S','D'])[i]}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Config Section */}
+                      <div className="bg-zinc-900 border border-white/10 rounded-3xl p-8">
+                        <header className="flex items-center gap-4 mb-8">
+                          <div className="w-10 h-10 rounded-2xl bg-neon-blue/10 flex items-center justify-center">
+                            <Settings size={20} className="text-neon-blue" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-bold text-white uppercase tracking-tight">Configurazione AdSense</h3>
+                            <p className="text-xs text-white/40">Inserisci snippet e ads.txt per attivare la monetizzazione</p>
+                          </div>
+                        </header>
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between p-5 bg-black/40 border border-white/5 rounded-2xl">
+                            <div>
+                              <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mb-1">Stato Monetizzazione</p>
+                              <p className={`text-sm font-bold ${adsenseConfig.enabled ? 'text-emerald-400' : 'text-white/40'}`}>
+                                {adsenseConfig.enabled ? 'ADSENSE ATTIVO' : 'DISATTIVATO'}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setAdsenseConfig({...adsenseConfig, enabled: !adsenseConfig.enabled})}
+                              className={`relative w-14 h-8 rounded-full transition-all ${adsenseConfig.enabled ? 'bg-neon-blue' : 'bg-white/10'}`}
+                            >
+                              <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${adsenseConfig.enabled ? 'right-1' : 'left-1'}`} />
+                            </button>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-white/30 uppercase tracking-widest font-black mb-3">Snippet Codice AdSense</label>
+                            <textarea 
+                              rows={5}
+                              value={adsenseConfig.script || ''}
+                              onChange={e => setAdsenseConfig({...adsenseConfig, script: e.target.value})}
+                              placeholder='<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXX" crossorigin="anonymous"></script>' 
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white font-mono text-[10px] focus:outline-none focus:border-neon-blue/30 transition-all resize-none" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-white/30 uppercase tracking-widest font-black mb-3">ads.txt Content</label>
+                            <textarea 
+                              rows={3}
+                              value={adsenseConfig.adsTxt || ''}
+                              onChange={e => setAdsenseConfig({...adsenseConfig, adsTxt: e.target.value})}
+                              placeholder='google.com, pub-XXXXXX, DIRECT, f08c47fec0942fa0' 
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white font-mono text-[10px] focus:outline-none focus:border-neon-blue/30 transition-all resize-none" 
+                            />
+                          </div>
+                          <button 
+                            onClick={() => saveAdSense(adsenseConfig)}
+                            disabled={isSavingAdsense}
+                            className={`w-full py-5 rounded-2xl shadow-xl transition-all uppercase tracking-widest text-[11px] font-black flex items-center justify-center gap-3 ${
+                              isSavingAdsense ? 'bg-zinc-800 text-white/50' : 'bg-neon-blue text-black hover:bg-neon-blue/80'
+                            }`}
+                          >
+                            {isSavingAdsense ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                            Salva Configurazione AdSense
+                          </button>
+                        </div>
+                      </div>
                     </motion.div>
                   )}
 
