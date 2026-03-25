@@ -6,13 +6,19 @@ import cors from "cors";
 import * as cheerio from "cheerio";
 
 // Constants
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const DATA_DIR = path.join(process.cwd(), ".data");
 const SOURCES_FILE = path.join(DATA_DIR, "news_sources.json");
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Ensure .data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+console.log(`[GamesPulse] Backend Init. Vercel Env: ${process.env.VERCEL || 'No'}`);
+
+// Safe helper for local FS - skipping on Vercel to avoid EROFS errors
+if (process.env.VERCEL !== '1' && !fs.existsSync(DATA_DIR)) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (e) {
+    console.warn('Could not create .data directory locally');
+  }
 }
 
 // Ensure news_sources.json exists with defaults if not present
@@ -92,57 +98,73 @@ app.post("/api/sources", (req, res) => {
 });
 
 function extractImage(item: any) {
-  // 1. Enclosure
-  if (item.enclosure && item.enclosure.url) {
-    if (item.enclosure.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return item.enclosure.url;
-  }
-  
-  // 2. Media Content / Thumbnail
-  const mediaTags = ["media:content", "media:thumbnail", "media:group", "image", "enclosure", "thumb"];
-  for (const tag of mediaTags) {
-    const content = item[tag];
-    if (content) {
-      if (Array.isArray(content)) {
-        const firstWithUrl = content.find((c: any) => {
-          const url = c.$?.url || c.url || (typeof c === 'string' ? c : null);
-          return url && url.match(/\.(jpg|jpeg|png|webp|gif)/i);
-        });
-        if (firstWithUrl) return firstWithUrl.$?.url || firstWithUrl.url || (typeof firstWithUrl === 'string' ? firstWithUrl : null);
-      }
-      if (content.$ && content.$.url) {
-        if (content.$.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.$.url;
-      }
-      if (content.url && content.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.url;
-      if (typeof content === 'string' && content.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content;
+  try {
+    // 1. Enclosure
+    if (item.enclosure && item.enclosure.url) {
+      if (item.enclosure.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return item.enclosure.url;
     }
-  }
-  
-  // 3. Content/Description Regex
-  const content = item.content || item["content:encoded"] || item.description || "";
-  const imgMatches = content.matchAll(/<img[^>]+(?:src|data-src|srcset)="([^"> ]+)"/g);
-  for (const match of imgMatches) {
-    const url = match[1];
-    if (!url.includes('pixel') && !url.includes('analytics') && !url.includes('doubleclick') && !url.includes('spacer')) {
-      return url;
+    
+    // 2. Media Content / Thumbnail
+    const mediaTags = ["media:content", "media:thumbnail", "media:group", "image", "enclosure", "thumb"];
+    for (const tag of mediaTags) {
+      const content = item[tag];
+      if (content) {
+        if (Array.isArray(content)) {
+          const firstWithUrl = content.find((c: any) => {
+            const url = c.$?.url || c.url || (typeof c === 'string' ? c : null);
+            return typeof url === 'string' && url.match(/\.(jpg|jpeg|png|webp|gif)/i);
+          });
+          if (firstWithUrl) return firstWithUrl.$?.url || firstWithUrl.url || (typeof firstWithUrl === 'string' ? firstWithUrl : null);
+        }
+        if (content.$ && content.$.url) {
+          if (typeof content.$.url === 'string' && content.$.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.$.url;
+        }
+        if (content.url && typeof content.url === 'string' && content.url.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content.url;
+        if (typeof content === 'string' && content.match(/\.(jpg|jpeg|png|webp|gif)/i)) return content;
+      }
     }
+    
+    // 3. Content/Description Regex
+    let content = item.content || item["content:encoded"] || item.description || "";
+    if (typeof content !== 'string') content = String(content || ''); // Ensure string
+    
+    const imgMatches = content.matchAll(/<img[^>]+(?:src|data-src|srcset)="([^"> ]+)"/g);
+    for (const match of imgMatches) {
+      const url = match[1];
+      if (typeof url === 'string' && !url.includes('pixel') && !url.includes('analytics') && !url.includes('doubleclick') && !url.includes('spacer')) {
+        return url;
+      }
+    }
+  } catch (e) {
+    return null;
   }
   return null;
 }
 
 function extractVideo(item: any) {
-  const content = item.content || item["content:encoded"] || item.description || "";
-  if (item['yt:videoId']) return `https://www.youtube.com/embed/${item['yt:videoId']}`;
-  if (item.id && item.id.startsWith('yt:video:')) return `https://www.youtube.com/embed/${item.id.replace('yt:video:', '')}`;
-  const ytMatch = content.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-  const vimeoMatch = content.match(/https?:\/\/player\.vimeo\.com\/video\/(\d+)/);
-  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  const mp4Match = content.match(/https?:\/\/[^"'>]+\.mp4/);
-  if (mp4Match) return mp4Match[0];
-  if (item["media:content"]) {
-    const media = Array.isArray(item["media:content"]) ? item["media:content"] : [item["media:content"]];
-    const video = media.find((m: any) => m.$ && (m.$.type?.includes('video') || m.$.medium === 'video'));
-    if (video && video.$.url) return video.$.url;
+  try {
+    let content = item.content || item["content:encoded"] || item.description || "";
+    if (typeof content !== 'string') content = String(content || '');
+
+    if (item['yt:videoId']) return `https://www.youtube.com/embed/${item['yt:videoId']}`;
+    if (item.id && item.id.startsWith('yt:video:')) return `https://www.youtube.com/embed/${item.id.replace('yt:video:', '')}`;
+    
+    const ytMatch = content.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+    
+    const vimeoMatch = content.match(/https?:\/\/player\.vimeo\.com\/video\/(\d+)/);
+    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    
+    const mp4Match = content.match(/https?:\/\/[^"'>]+\.mp4/);
+    if (mp4Match) return mp4Match[0];
+
+    if (item["media:content"]) {
+      const media = Array.isArray(item["media:content"]) ? item["media:content"] : [item["media:content"]];
+      const video = media.find((m: any) => m.$ && (m.$.type?.includes('video') || m.$.medium === 'video'));
+      if (video && video.$.url) return video.$.url;
+    }
+  } catch (e) {
+    return null;
   }
   return null;
 }
@@ -217,13 +239,13 @@ app.get("/api/news", async (req, res) => {
   try {
     const allSources = loadSources().filter((s: any) => s.active !== false);
     
-    // VERCEL SPECIAL: Limit to top 15 sources to guarantee performance under 10s
-    const sources = process.env.VERCEL === '1' ? allSources.slice(0, 15) : allSources;
+    // VERCEL SPECIAL: Limit sources to guarantee performance under CPU limits
+    const sources = process.env.VERCEL === '1' ? allSources.slice(0, 12) : allSources;
     
     const TIMEOUT_MS = 3500;
     const ITEMS_PER_SOURCE = 8;
     
-    console.log(`[GamesPulse] Starting fetch for ${sources.length} sources...`);
+    console.log(`[GamesPulse] Starting Parallel Fetch for ${sources.length} sources...`);
 
     const results = await Promise.all(sources.map(async (source: any) => {
       const controller = new AbortController();
@@ -239,8 +261,12 @@ app.get("/api/news", async (req, res) => {
         clearTimeout(timeoutId);
         if (!response.ok) return [];
         const xml = await response.text();
-        const feed = await parser.parseString(xml);
-        return feed.items.slice(0, ITEMS_PER_SOURCE).map(item => ({
+        const feed: any = await Promise.race([
+          parser.parseString(xml),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Parse timeout')), TIMEOUT_MS))
+        ]);
+        
+        return feed.items.slice(0, ITEMS_PER_SOURCE).map((item: any) => ({
           id: item.guid || item.link || `${source.id}-${Math.random()}`,
           title: item.title || 'In arrivo...',
           link: item.link || '#',
@@ -251,8 +277,9 @@ app.get("/api/news", async (req, res) => {
           image: extractImage(item),
           video: extractVideo(item),
         }));
-      } catch (e) {
+      } catch (e: any) {
         clearTimeout(timeoutId);
+        console.warn(`[GamesPulse] Failed fetch for ${source.name}:`, e?.message || 'Unknown error');
         return [];
       }
     }));
