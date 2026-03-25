@@ -59,7 +59,8 @@ import {
   getDoc, 
   setDoc, 
   updateDoc, 
-  onSnapshot 
+  onSnapshot,
+  increment
 } from 'firebase/firestore';
 
 interface NewsItem {
@@ -100,9 +101,9 @@ const getCategory = (item: NewsItem) => {
   
   // PlayStation
   if (
-    source === 'pushsquare' || 
-    source === 'ps_global' || 
-    source === 'ign_it' || // IGN often has broad coverage but prioritize PS if titles match
+    source.includes('pushsquare') || 
+    source.includes('ps_global') || 
+    source.includes('playstation') ||
     title.includes('ps5') || 
     title.includes('playstation') || 
     title.includes('sony') ||
@@ -114,8 +115,8 @@ const getCategory = (item: NewsItem) => {
 
   // Xbox
   if (
-    source === 'purexbox' || 
-    source === 'xbox_global' || 
+    source.includes('purexbox') || 
+    source.includes('xbox') || 
     title.includes('xbox') || 
     title.includes('microsoft') || 
     title.includes('series x') || 
@@ -127,8 +128,8 @@ const getCategory = (item: NewsItem) => {
 
   // Nintendo
   if (
-    source === 'nintendolife' || 
-    source === 'nintendo_it' || 
+    source.includes('nintendolife') || 
+    source.includes('nintendo') || 
     title.includes('nintendo') || 
     title.includes('switch') || 
     title.includes('mario') || 
@@ -139,8 +140,9 @@ const getCategory = (item: NewsItem) => {
 
   // PC
   if (
-    source === 'pcgamer' || 
-    source === 'kotaku' || // Kotaku covers many, but often PC/General
+    source.includes('pcgamer') || 
+    source.includes('kotaku') || 
+    source.includes('rock paper shotgun') ||
     title.includes('pc master race') || 
     title.includes('steam') || 
     title.includes('epic games') || 
@@ -153,8 +155,9 @@ const getCategory = (item: NewsItem) => {
 
   // Mobile
   if (
-    source === 'androidcentral' || 
-    source === 'macrumors' || 
+    source.includes('androidcentral') || 
+    source.includes('macrumors') || 
+    source.includes('pocket gamer') ||
     title.includes('mobile') || 
     title.includes('ios') || 
     title.includes('android') || 
@@ -166,11 +169,12 @@ const getCategory = (item: NewsItem) => {
 
   // Tech & Hardware
   if (
-    source === 'theverge' || 
-    source === 'engadget' || 
-    source === 'hdblog' || 
-    source === 'digitalfoundry' || 
-    source === 'everyeye' || // IT broad, but often tech focused
+    source.includes('theverge') || 
+    source.includes('engadget') || 
+    source.includes('hdblog') || 
+    source.includes('digitalfoundry') || 
+    source.includes('wired') ||
+    source.includes('techcrunch') ||
     title.includes('gpu') || 
     title.includes('cpu') || 
     title.includes('hardware') || 
@@ -179,6 +183,15 @@ const getCategory = (item: NewsItem) => {
     title.includes('openai') || 
     title.includes('chatgpt')
   ) return 'tech';
+
+  // Specific Source Mappings to Existing Categories
+  if (
+    source.includes('gamestar') || 
+    source.includes('pcgames.de') ||
+    source.includes('pc games') ||
+    source.includes('pcgamer') ||
+    source.includes('rock paper shotgun')
+  ) return 'pc';
   
   return 'general';
 };
@@ -249,7 +262,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-[75px] left-0 right-0 bottom-[220px] overflow-hidden bg-black shadow-2xl">
+          <div className="absolute top-[72px] left-0 right-0 bottom-[280px] overflow-hidden bg-black shadow-2xl">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
@@ -273,10 +286,10 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             {/* Sfumatura superiore delicata */}
             <div className="absolute top-0 left-0 right-0 h-[35%] bg-gradient-to-b from-black/50 via-black/5 to-transparent"></div>
             {/* Sfumatura inferiore delicata */}
-            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
+            <div className="absolute bottom-[-5px] left-0 right-0 h-[60%] bg-gradient-to-t from-black via-black/25 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-[75px] left-0 right-0 bottom-[220px] overflow-hidden shadow-2xl">
+          <div className="absolute top-[72px] left-0 right-0 bottom-[280px] overflow-hidden shadow-2xl">
             <img 
               src={item.image} 
               alt={item.title}
@@ -287,10 +300,10 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             {/* Sfumatura superiore delicata */}
             <div className="absolute top-0 left-0 right-0 h-[35%] bg-gradient-to-b from-black/50 via-black/5 to-transparent"></div>
             {/* Sfumatura inferiore delicata */}
-            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
+            <div className="absolute bottom-[-5px] left-0 right-0 h-[60%] bg-gradient-to-t from-black via-black/25 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-[75px] left-0 right-0 bottom-[220px] bg-zinc-900/80 overflow-hidden">
+          <div className="absolute top-[72px] left-0 right-0 bottom-[280px] bg-zinc-900/80 overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -417,7 +430,23 @@ export default function App() {
     { "id": "gp-027", "url": "http://feeds.feedburner.com/ign/video-reviews", "cat": "Videos", "name": "IGN Video Reviews", "active": true },
     { "id": "gp-028", "url": "https://www.gamespot.com/feeds/video/", "cat": "Videos", "name": "GameSpot Video", "active": true },
     { "id": "gp-024", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCm4WlDgi7QAsitnybaid2vA", "cat": "Videos", "name": "GameTrailers", "active": true },
+    // INTERNATIONAL
+    { "id": "gp-usa-1", "url": "https://www.gameinformer.com/rss.xml", "cat": "News", "name": "Game Informer", "active": true },
+    { "id": "gp-usa-2", "url": "https://venturebeat.com/category/games/feed/", "cat": "Industry", "name": "VentureBeat Gear", "active": true },
+    { "id": "gp-usa-3", "url": "https://www.destructoid.com/feed/", "cat": "News", "name": "Destructoid", "active": true },
+    { "id": "gp-usa-4", "url": "https://www.siliconera.com/feed/", "cat": "News", "name": "Siliconera", "active": true },
+    { "id": "gp-usa-5", "url": "https://www.gematsu.com/feed", "cat": "News", "name": "Gematsu", "active": true },
+    { "id": "gp-fr-1", "url": "https://www.jeuxvideo.com/rss/rss.xml", "cat": "News", "name": "Jeuxvideo.com", "active": true },
+    { "id": "gp-fr-2", "url": "https://www.gamekult.com/flux-rss.html", "cat": "News", "name": "Gamekult", "active": true },
+    { "id": "gp-fr-3", "url": "https://www.jeuxactu.com/rss/news.rss", "cat": "News", "name": "JeuxActu", "active": true },
+    { "id": "gp-es-1", "url": "https://as.com/meristation/rss/portada.xml", "cat": "News", "name": "MeriStation", "active": true },
+    { "id": "gp-es-2", "url": "https://vandal.elespanol.com/noticias.xml", "cat": "News", "name": "Vandal", "active": true },
+    { "id": "gp-es-3", "url": "https://www.3djuegos.com/rss/rss.php", "cat": "News", "name": "3DJuegos", "active": true },
+    { "id": "gp-de-1", "url": "https://www.gamestar.de/news/rss/news.rss", "cat": "PC", "name": "GameStar", "active": true },
+    { "id": "gp-de-2", "url": "https://www.gamepro.de/rss/news.rss", "cat": "News", "name": "GamePro", "active": true },
+    { "id": "gp-de-3", "url": "http://www.pcgames.de/rss/pcgames.xml", "cat": "PC", "name": "PC Games DE", "active": true }
   ]);
+
   const [newSource, setNewSource] = useState({ name: '', url: '', cat: 'News' });
   const [seoConfigs, setSeoConfigs] = useState<any>({
     "all": {
@@ -728,17 +757,18 @@ export default function App() {
     user ? { id: 'logout', label: 'Esci', icon: <LogOut size={20} />, action: logout } : null
   ].filter(Boolean) as any[];
 
-  const fetchNews = async (force = false) => {
+  const fetchNews = async (force = false, category = 'all') => {
     setLoading(true);
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-      const response = await fetch(`/api/news${force ? '?refresh=true' : ''}`, { signal: controller.signal });
+      const timeout = setTimeout(() => controller.abort(), 20000); // Increased timeout
+      const response = await fetch(`/api/news?category=${category}${force ? '&refresh=true' : ''}`, { 
+        signal: controller.signal 
+      });
       clearTimeout(timeout);
       const data = await response.json();
       
       if (!Array.isArray(data) || data.length === 0) {
-        console.warn('No news data received, stopping loader');
         setNews([]);
         setLoading(false);
         return;
@@ -749,6 +779,7 @@ export default function App() {
         category: getCategory(item)
       }));
       setNews(categorizedData);
+      setVisibleCount(10); // Reset visibility count on fetch
     } catch (error: any) {
       if (error?.name === 'AbortError') {
         console.warn('News fetch timed out — stopping loader');
@@ -1120,7 +1151,10 @@ export default function App() {
                   scale: 1,
                   boxShadow: `0 0 20px ${CATEGORIES.find(c => c.id === selectedCategory)?.color}`
                 }}
-                onClick={() => setSelectedCategory('all')}
+                onClick={() => {
+                  setSelectedCategory('all');
+                  fetchNews(false, 'all');
+                }}
                 className="w-8 h-8 rounded-xl text-white flex items-center justify-center border-2 z-50 active:scale-90 transition-transform"
                 style={{ 
                   backgroundColor: CATEGORIES.find(c => c.id === selectedCategory)?.color,
@@ -1254,10 +1288,10 @@ export default function App() {
                   }}
                   exit={{ opacity: 0, scale: 0.5, x: 20 }}
                   onClick={() => {
-                    if (selectedCategory === cat.id) {
-                      setSelectedCategory('all');
-                    } else {
-                      setSelectedCategory(cat.id);
+                    const newCat = selectedCategory === cat.id ? 'all' : cat.id;
+                    setSelectedCategory(newCat);
+                    if (newCat !== 'favorites') {
+                      fetchNews(false, newCat);
                     }
                     setIsMenuOpen(false);
                     setIsSettingsOpen(false);
@@ -1399,7 +1433,10 @@ export default function App() {
                   </p>
                 </div>
                 <button 
-                  onClick={() => setSelectedCategory('all')}
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    fetchNews(false, 'all');
+                  }}
                   className="px-6 py-2 rounded-full border border-white/5 text-[9px] font-bold text-neon-blue uppercase tracking-widest hover:bg-neon-blue/5 transition-all"
                 >
                   {selectedCategory === 'favorites' ? 'Sfoglia tutte le notizie' : 'Torna alla Home'}
@@ -1840,6 +1877,17 @@ export default function App() {
 
                       {/* Category Menu Selector */}
                       <div className="flex flex-wrap gap-2 mb-10 overflow-x-auto no-scrollbar pb-2">
+                        <button
+                          onClick={() => setFeedCategoryFilter('TUTTI')}
+                          className={`flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all text-xs font-black uppercase tracking-widest ${
+                            feedCategoryFilter === 'TUTTI' 
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]' 
+                            : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Database size={16} className="opacity-50" />
+                          TUTTI
+                        </button>
                         {CATEGORIES.filter(c => c.id !== 'all' && c.id !== 'favorites').map(cat => (
                           <button
                             key={cat.id}
@@ -1858,8 +1906,11 @@ export default function App() {
 
                       {/* Sources List Grouped by Category */}
                       <div className="space-y-12">
-                        {CATEGORIES.filter(c => c.id !== 'all' && c.id !== 'favorites' && c.label === feedCategoryFilter).map(cat => {
-                          const catSources = newsSources.filter(s => s.cat === cat.label);
+                        {CATEGORIES.filter(c => c.id !== 'all' && c.id !== 'favorites' && (feedCategoryFilter === 'TUTTI' || c.label === feedCategoryFilter)).map(cat => {
+                          const catSources = newsSources.filter(s => s.cat === cat.label || (cat.label === 'News' && !s.cat));
+                          if (feedCategoryFilter !== 'TUTTI' && cat.label !== feedCategoryFilter) return null;
+                          if (feedCategoryFilter === 'TUTTI' && catSources.length === 0) return null;
+
                           return (
                             <div key={cat.id} className="relative">
                               <div className="flex items-center gap-4 mb-6 pt-6 border-t border-white/5">
@@ -1871,16 +1922,6 @@ export default function App() {
                                   <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">{catSources.filter(s => s.active !== false).length}/{catSources.length} Fonti Configurate</p>
                                 </div>
                                 <div className="h-px bg-white/5 flex-1 mx-6" />
-                                <button 
-                                  type="button"
-                                  onClick={() => {
-                                    const allActive = catSources.every(s => s.active !== false);
-                                    handleToggleAll(!allActive, cat.label);
-                                  }}
-                                  className="text-[10px] font-black uppercase tracking-widest px-6 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-emerald-500/20 hover:text-emerald-400 transition-all"
-                                >
-                                  {catSources.every(s => s.active !== false) ? 'Disattiva Area' : 'Attiva Tutto'}
-                                </button>
                               </div>
 
                               {catSources.length === 0 ? (

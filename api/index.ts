@@ -63,18 +63,44 @@ function loadSources() {
     { "id": "gp-005", "url": "https://www.spaziogames.it/feed/", "cat": "News", "name": "Spaziogames", "active": true },
     { "id": "gp-006", "url": "https://feeds.feedburner.com/ign/all", "cat": "News", "name": "IGN Global", "active": true },
     { "id": "gp-007", "url": "https://www.gamespot.com/feeds/mashup/", "cat": "News", "name": "GameSpot", "active": true },
+    { "id": "gp-008", "url": "https://www.ign.com/rss/articles/it", "cat": "News", "name": "IGN Italia Reviews", "active": true },
+    // PC
     { "id": "gp-011", "url": "https://www.pcgamer.com/rss", "cat": "PC", "name": "PC Gamer", "active": true },
+    { "id": "gp-011b", "url": "https://www.rockpapershotgun.com/feed", "cat": "PC", "name": "Rock Paper Shotgun", "active": true },
+    { "id": "gp-011c", "url": "https://www.pcgamesn.com/rss", "cat": "PC", "name": "PCGamesN", "active": true },
+    // Switch / Nintendo
     { "id": "gp-012", "url": "https://www.nintendolife.com/feeds/latest", "cat": "Switch", "name": "Nintendo Life", "active": true },
+    { "id": "gp-012b", "url": "https://nintendowire.com/feed/", "cat": "Switch", "name": "Nintendo Wire", "active": true },
+    { "id": "gp-023", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6f_u6p_GZ_vX_Z_B_6Q8sw", "cat": "Switch", "name": "Nintendo IT Video", "active": true },
+    // PS5 / PlayStation
     { "id": "gp-013", "url": "https://www.pushsquare.com/feeds/latest", "cat": "PS5", "name": "Push Square", "active": true },
+    { "id": "gp-013b", "url": "https://blog.playstation.com/feed/", "cat": "PS5", "name": "PlayStation Blog", "active": true },
+    { "id": "gp-021", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC-2Y8L_huKU29enH8vGZ9yA", "cat": "PS5", "name": "PlayStation Video", "active": true },
+    // Xbox
     { "id": "gp-014", "url": "https://www.purexbox.com/feeds/latest", "cat": "Xbox", "name": "Pure Xbox", "active": true },
-    { "id": "gp-015", "url": "https://www.gamesindustry.biz/feed", "cat": "Industry", "name": "GamesIndustry", "active": true },
+    { "id": "gp-014b", "url": "https://news.xbox.com/en-us/feed/", "cat": "Xbox", "name": "Xbox Wire", "active": true },
+    { "id": "gp-014c", "url": "https://www.windowscentral.com/xbox/rss.xml", "cat": "Xbox", "name": "Windows Central Xbox", "active": true },
+    { "id": "gp-022", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCjBp_7RuDBUYbd1LegWEJ8g", "cat": "Xbox", "name": "Xbox Video", "active": true },
+    // Tech
     { "id": "gp-016", "url": "https://www.theverge.com/rss/index.xml", "cat": "Tech", "name": "The Verge", "active": true },
     { "id": "gp-017", "url": "https://www.engadget.com/rss.xml", "cat": "Tech", "name": "Engadget", "active": true },
     { "id": "gp-020", "url": "https://www.hdblog.it/feed/", "cat": "Tech", "name": "HD Blog", "active": true },
-    { "id": "gp-021", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC-2Y8L_huKU29enH8vGZ9yA", "cat": "PS5", "name": "PlayStation Video", "active": true },
-    { "id": "gp-022", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCjBp_7RuDBUYbd1LegWEJ8g", "cat": "Xbox", "name": "Xbox Video", "active": true },
-    { "id": "gp-023", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6f_u6p_GZ_vX_Z_B_6Q8sw", "cat": "Switch", "name": "Nintendo IT Video", "active": true },
-    { "id": "gp-025", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9PBzalIcEQCsiIkq36PyUA", "cat": "Tech", "name": "Digital Foundry", "active": true }
+    { "id": "gp-025", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC9PBzalIcEQCsiIkq36PyUA", "cat": "Tech", "name": "Digital Foundry", "active": true },
+    // INTERNATIONAL
+    { "id": "gp-usa-1", "url": "https://www.gameinformer.com/rss.xml", "cat": "News", "name": "Game Informer", "active": true },
+    { "id": "gp-usa-2", "url": "https://venturebeat.com/category/games/feed/", "cat": "Industry", "name": "VentureBeat Gear", "active": true },
+    { "id": "gp-usa-3", "url": "https://www.destructoid.com/feed/", "cat": "News", "name": "Destructoid", "active": true },
+    { "id": "gp-usa-4", "url": "https://www.siliconera.com/feed/", "cat": "News", "name": "Siliconera", "active": true },
+    { "id": "gp-usa-5", "url": "https://www.gematsu.com/feed", "cat": "News", "name": "Gematsu", "active": true },
+    { "id": "gp-fr-1", "url": "https://www.jeuxvideo.com/rss/rss.xml", "cat": "News", "name": "Jeuxvideo.com", "active": true },
+    { "id": "gp-fr-2", "url": "https://www.gamekult.com/flux-rss.html", "cat": "News", "name": "Gamekult", "active": true },
+    { "id": "gp-fr-3", "url": "https://www.jeuxactu.com/rss/news.rss", "cat": "News", "name": "JeuxActu", "active": true },
+    { "id": "gp-es-1", "url": "https://as.com/meristation/rss/portada.xml", "cat": "News", "name": "MeriStation", "active": true },
+    { "id": "gp-es-2", "url": "https://vandal.elespanol.com/noticias.xml", "cat": "News", "name": "Vandal", "active": true },
+    { "id": "gp-es-3", "url": "https://www.3djuegos.com/rss/rss.php", "cat": "News", "name": "3DJuegos", "active": true },
+    { "id": "gp-de-1", "url": "https://www.gamestar.de/news/rss/news.rss", "cat": "PC", "name": "GameStar", "active": true },
+    { "id": "gp-de-2", "url": "https://www.gamepro.de/rss/news.rss", "cat": "News", "name": "GamePro", "active": true },
+    { "id": "gp-de-3", "url": "http://www.pcgames.de/rss/pcgames.xml", "cat": "PC", "name": "PC Games DE", "active": true }
   ];
 }
 
@@ -238,14 +264,43 @@ app.get("/api/news", async (req, res) => {
 
   try {
     const allSources = loadSources().filter((s: any) => s.active !== false);
+    const category = (req.query.category as string || 'all').toLowerCase();
     
-    // VERCEL SPECIAL: Limit sources to guarantee performance under CPU limits
-    const sources = process.env.VERCEL === '1' ? allSources.slice(0, 12) : allSources;
+    // Prioritize sources matching the requested category
+    let sortedSources = allSources;
+    if (category !== 'all') {
+      const psCats = ['playstation', 'ps5'];
+      const xboxCats = ['xbox'];
+      const switchCats = ['switch', 'nintendo'];
+      const pcCats = ['pc'];
+      
+      sortedSources = [
+        ...allSources.filter((s: any) => {
+          const sCat = s.cat?.toLowerCase();
+          if (category === 'playstation') return psCats.includes(sCat);
+          if (category === 'xbox') return xboxCats.includes(sCat);
+          if (category === 'nintendo' || category === 'switch') return switchCats.includes(sCat);
+          if (category === 'pc') return pcCats.includes(sCat);
+          return sCat === category;
+        }),
+        ...allSources.filter((s: any) => {
+          const sCat = s.cat?.toLowerCase();
+          if (category === 'playstation') return !psCats.includes(sCat);
+          if (category === 'xbox') return !xboxCats.includes(sCat);
+          if (category === 'nintendo' || category === 'switch') return !switchCats.includes(sCat);
+          if (category === 'pc') return !pcCats.includes(sCat);
+          return sCat !== category;
+        })
+      ];
+    }
+
+    // VERCEL SPECIAL: Limit sources to guarantee performance, but increase to 40 for more variety
+    const sources = process.env.VERCEL === '1' ? sortedSources.slice(0, 40) : sortedSources;
     
-    const TIMEOUT_MS = 3500;
-    const ITEMS_PER_SOURCE = 8;
+    const TIMEOUT_MS = 4500; // Increased slightly for more concurrent fetches
+    const ITEMS_PER_SOURCE = 30; // Increased significantly for "infinite" scroll feel
     
-    console.log(`[GamesPulse] Starting Parallel Fetch for ${sources.length} sources...`);
+    console.log(`[GamesPulse] Starting Parallel Fetch for ${sources.length} sources (Category: ${category})...`);
 
     const results = await Promise.all(sources.map(async (source: any) => {
       const controller = new AbortController();
