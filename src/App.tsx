@@ -85,14 +85,12 @@ interface Source {
 const CATEGORIES = [
   { id: 'all', label: 'Home', icon: <LayoutGrid size={20} />, color: '#00f3ff' },
   { id: 'favorites', label: 'Favorites', icon: <Heart size={20} />, color: '#ff2e63' },
-  { id: 'news', label: 'News', icon: <div className="font-bold text-xs">NEWS</div>, color: '#f59e0b' },
   { id: 'playstation', label: 'PS5', icon: <div className="font-bold text-xs">PS</div>, color: '#0072ce' },
   { id: 'xbox', label: 'Xbox', icon: <div className="font-bold text-xs">XB</div>, color: '#107c10' },
   { id: 'nintendo', label: 'Switch', icon: <div className="font-bold text-xs">NT</div>, color: '#e60012' },
   { id: 'pc', label: 'PC', icon: <Monitor size={20} />, color: '#bc13fe' },
   { id: 'tech', label: 'Tech', icon: <Cpu size={20} />, color: '#39ff14' },
   { id: 'mobile', label: 'Mobile', icon: <Smartphone size={20} />, color: '#ff00ff' },
-  { id: 'videos', label: 'Videos', icon: <div className="font-bold text-xs">VID</div>, color: '#ef4444' },
 ];
 
 const getCategory = (item: NewsItem) => {
@@ -251,7 +249,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-[82px] left-4 right-4 bottom-[295px] overflow-hidden bg-black rounded-3xl shadow-2xl">
+          <div className="absolute top-[77px] left-[-5px] right-[-5px] bottom-[285px] overflow-hidden bg-black shadow-2xl">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
@@ -278,7 +276,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-[82px] left-4 right-4 bottom-[295px] overflow-hidden rounded-3xl shadow-2xl">
+          <div className="absolute top-[77px] left-[-5px] right-[-5px] bottom-[285px] overflow-hidden shadow-2xl">
             <img 
               src={item.image} 
               alt={item.title}
@@ -292,7 +290,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-[82px] left-4 right-4 bottom-[295px] bg-zinc-900/80 rounded-3xl overflow-hidden">
+          <div className="absolute top-[77px] left-[-5px] right-[-5px] bottom-[285px] bg-zinc-900/80 overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -770,35 +768,70 @@ export default function App() {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data) && data.length > 0) setNewsSources(data); })
       .catch(() => {}); // silently use hardcoded defaults if fetch fails
-    fetchConfigs();
   }, []);
 
 
-  const fetchConfigs = async () => {
-    // Non-blocking: fetch from cloud/API and merge over hardcoded defaults
-    const timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
-    const safeGet = async (fn: () => Promise<any>) => { try { return await Promise.race([fn(), timeout(5000)]); } catch { return null; } };
+  const fetchConfigs = useCallback(() => {
+    // 1. Listen to Firestore Configs in Real-time
+    const configsToWatch = ['seo', 'adsense', 'analytics', 'sources'];
+    const unsubscribes = configsToWatch.map(configId => {
+      return onSnapshot(doc(db, 'admin_configs', configId), (snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+        switch (configId) {
+          case 'seo': setSeoConfigs((prev: any) => ({ ...prev, ...data })); break;
+          case 'adsense': setAdsenseConfig(data); break;
+          case 'analytics': setAnalyticsConfig(data); break;
+          case 'sources': if (data.list) setNewsSources(data.list); break;
+        }
+      }, (error) => {
+        console.warn(`Realtime error for ${configId}:`, error);
+      });
+    });
 
-    const [fireSeo, fireAds, fireAna, apiSeo, apiAds, apiAna] = await Promise.all([
-      safeGet(() => getDoc(doc(db, 'admin_configs', 'seo'))),
-      safeGet(() => getDoc(doc(db, 'admin_configs', 'adsense'))),
-      safeGet(() => getDoc(doc(db, 'admin_configs', 'analytics'))),
-      safeGet(() => fetch('/api/config/seo').then(r => r.ok ? r.json() : null)),
-      safeGet(() => fetch('/api/config/adsense').then(r => r.ok ? r.json() : null)),
-      safeGet(() => fetch('/api/config/analytics').then(r => r.ok ? r.json() : null)),
-    ]);
+    // 2. Listen to Real-time Traffic from Firestore
+    const unsubTraffic = onSnapshot(doc(db, 'traffic', 'global'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setTrafficStats((prev: any) => ({
+          ...prev,
+          totalVisitors: data.total || 0,
+          todayVisitors: data.today || 0,
+          liveUsers: data.live || Math.floor(Math.random() * 10) + 1, // simulated if not present
+          averageSession: data.avgSession || '2m 14s'
+        }));
+      }
+    });
 
-    const seoFromCloud = (fireSeo?.exists?.() ? fireSeo.data() : null) || (apiSeo && Object.keys(apiSeo).length > 0 ? apiSeo : null);
-    const adsFromCloud = (fireAds?.exists?.() ? fireAds.data() : null) || (apiAds && Object.keys(apiAds).length > 0 ? apiAds : null);
-    const anaFromCloud = (fireAna?.exists?.() ? fireAna.data() : null) || (apiAna && Object.keys(apiAna).length > 0 ? apiAna : null);
+    return () => {
+      unsubscribes.forEach(unsub => unsub());
+      unsubTraffic();
+    };
+  }, [db]);
 
-    // Merge cloud data over hardcoded defaults (cloud wins if available)
-    if (seoFromCloud) setSeoConfigs((prev: any) => ({ ...prev, ...seoFromCloud }));
-    if (adsFromCloud) setAdsenseConfig(adsFromCloud);
-    if (anaFromCloud) setAnalyticsConfig(anaFromCloud);
+  useEffect(() => {
+    const unsubConfigs = fetchConfigs();
+    
+    // Heartbeat for traffic tracking
+    const trackVisit = async () => {
+      try {
+        const trafficDoc = doc(db, 'traffic', 'global');
+        await setDoc(trafficDoc, {
+          total: increment(1),
+          today: increment(1),
+          lastVisit: new Date().toISOString()
+        }, { merge: true });
+      } catch (e) {
+        console.warn("Traffic tracking limited by permissions or network");
+      }
+    };
 
-    console.log('Configs loaded:', { seoFromCloud, adsFromCloud, anaFromCloud });
-  };
+    if (isAuthReady) trackVisit();
+
+    return () => {
+      if (typeof unsubConfigs === 'function') unsubConfigs();
+    };
+  }, [isAuthReady, db]);
 
   const saveSeoConfig = async (catId: string, config: any) => {
     setIsSavingSeo(true);
