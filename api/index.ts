@@ -214,67 +214,79 @@ app.get("/api/news", async (req, res) => {
 
   try {
     const sources = loadSources().filter((s: any) => s.active !== false);
-    const feedPromises = sources.map(async (source: any) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      try {
-        const response = await fetch(source.url, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-          }
-        });
-        clearTimeout(timeoutId);
-        if (!response.ok) return [];
-        let xml = await response.text();
-        const feed = await parser.parseString(xml);
-        return feed.items.map(item => ({
-          id: item.guid || item.link,
-          title: item.title,
-          link: item.link,
-          pubDate: item.pubDate,
-          content: item.contentSnippet || item.content,
-          source: source.name,
-          image: extractImage(item),
-          video: extractVideo(item),
-        }));
-      } catch (e) { return []; }
-    });
+    const CONCURRENCY = 8; // Vercel safe: max 8 parallel fetches
+    const TIMEOUT_MS = 6000; // 6s per source
+    const ITEMS_PER_SOURCE = 8;
+    const allItems: any[] = [];
 
-    const results = await Promise.all(feedPromises);
-    const allNews = results.flat().sort((a, b) => {
-      const dateA = new Date(a.pubDate).getTime();
-      const dateB = new Date(b.pubDate).getTime();
-      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
-    });
-    
-    const slicedNews = allNews.slice(0, 500);
-    if (process.env.VERCEL === '1') {
-      newsCache = slicedNews;
-      lastFetchTime = Date.now();
-      return res.json(slicedNews);
+    // Chunked parallel fetch to avoid Vercel timeout
+    for (let i = 0; i < sources.length; i += CONCURRENCY) {
+      const chunk = sources.slice(i, i + CONCURRENCY);
+      const chunkResults = await Promise.all(chunk.map(async (source: any) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        try {
+          const response = await fetch(source.url, {
+            signal: controller.signal,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; GamesPulse/1.0; +https://gamespulse.vercel.app)',
+              'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+            }
+          });
+          clearTimeout(timeoutId);
+          if (!response.ok) return [];
+          const xml = await response.text();
+          const feed = await parser.parseString(xml);
+          return feed.items.slice(0, ITEMS_PER_SOURCE).map(item => ({
+            id: item.guid || item.link || `${source.id}-${Date.now()}`,
+            title: item.title || '',
+            link: item.link || '',
+            pubDate: item.pubDate || new Date().toISOString(),
+            content: item.contentSnippet || item.content || '',
+            source: source.name,
+            category: source.cat,
+            image: extractImage(item),
+            video: extractVideo(item),
+          }));
+        } catch (e) {
+          clearTimeout(timeoutId);
+          return [];
+        }
+      }));
+      allItems.push(...chunkResults.flat());
     }
 
-    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 100);
-    if (newsToEnhance.length > 0) {
-      await Promise.all(newsToEnhance.map(async (item) => {
+    const sorted = allItems.sort((a, b) => {
+      const dA = new Date(a.pubDate).getTime();
+      const dB = new Date(b.pubDate).getTime();
+      return (isNaN(dB) ? 0 : dB) - (isNaN(dA) ? 0 : dA);
+    });
+
+    // On Vercel skip meta enrichment to avoid exceeding time limit
+    if (process.env.VERCEL !== '1') {
+      const toEnhance = sorted.filter(item => !item.image).slice(0, 30);
+      await Promise.all(toEnhance.map(async (item) => {
         const meta = await fetchMetaInfo(item.link);
-        if (meta.image && !item.image) item.image = meta.image;
+        if (meta.image) item.image = meta.image;
         if (meta.video && !item.video) item.video = meta.video;
         if (!item.image) {
-          item.image = `https://picsum.photos/seed/${encodeURIComponent(item.title.substring(0, 10))}/800/450`;
+          item.image = `https://picsum.photos/seed/${encodeURIComponent((item.title || 'game').substring(0, 10))}/800/450`;
         }
       }));
     }
 
-    newsCache = slicedNews;
+    newsCache = sorted;
     lastFetchTime = Date.now();
-    res.json(slicedNews);
+    console.log(`[GamesPulse] Fetched ${sorted.length} items from ${sources.length} sources`);
+    return res.json(sorted);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch news" });
+    console.error('[GamesPulse] Fatal fetch error:', error);
+    // Return cached data if available, otherwise empty array
+    if (newsCache.length > 0) return res.json(newsCache);
+    return res.status(500).json([]);
   }
 });
+
 
 // Admin config endpoints
 app.get("/api/config/:type", (req, res) => {

@@ -250,7 +250,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       >
         {/* Full Screen Background Image or Video */}
         {(item.video && !videoError) ? (
-          <div className="absolute top-[30px] left-0 right-0 bottom-[285px] overflow-hidden bg-black">
+          <div className="absolute top-0 left-0 right-0 bottom-[285px] overflow-hidden bg-black">
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
@@ -274,12 +274,12 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             {/* Vignette radiale perimetrale */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.55)_100%)]"></div>
             {/* Vignette top sottile */}
-            <div className="absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-black/40 via-black/10 to-transparent"></div>
+            <div className="absolute top-0 left-0 right-0 h-[55%] bg-gradient-to-b from-black/75 via-black/20 to-transparent"></div>
             {/* Vignette bottom per leggibilità testo */}
             <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
-          <div className="absolute top-[30px] left-0 right-0 bottom-[285px] overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 bottom-[285px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
@@ -290,12 +290,12 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             {/* Vignette radiale perimetrale */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.55)_100%)]"></div>
             {/* Vignette top sottile */}
-            <div className="absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-black/40 via-black/10 to-transparent"></div>
+            <div className="absolute top-0 left-0 right-0 h-[55%] bg-gradient-to-b from-black/75 via-black/20 to-transparent"></div>
             {/* Vignette bottom per leggibilità testo */}
             <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
           </div>
         ) : (
-          <div className="absolute top-[30px] left-0 right-0 bottom-[285px] bg-zinc-900/80">
+          <div className="absolute top-0 left-0 right-0 bottom-[285px] bg-zinc-900/80">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-neon-blue/10 opacity-50"></div>
           </div>
         )}
@@ -747,7 +747,11 @@ export default function App() {
 
   useEffect(() => {
     fetchNews();
-    fetchSources();
+    // Load sources from API (with hardcoded fallback in api/index.ts)
+    fetch('/api/sources')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data) && data.length > 0) setNewsSources(data); })
+      .catch(() => {}); // silently use hardcoded defaults if fetch fails
     fetchConfigs();
   }, []);
 
@@ -1243,55 +1247,44 @@ export default function App() {
         onScroll={handleScroll}
       >
         {(loading && filteredNews.length === 0) || showSplash ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black overflow-hidden font-header z-50">
-            {splashBg ? (
-              <motion.div 
-                className="absolute inset-0 bg-cover bg-center brightness-[0.2] blur-md scale-110"
-                style={{ backgroundImage: `url(${splashBg})` }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black" />
-            )}
-            <div className="relative z-10 flex flex-col items-center gap-0">
-              {/* Outer glow ring */}
-              <motion.div
-                animate={{ opacity: [0.15, 0.4, 0.15], scale: [1, 1.08, 1] }}
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-50">
+            {/* Clean black background, no random image */}
+            <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-black to-zinc-950" />
+            {/* Subtle animated radial glow */}
+            <motion.div
+              animate={{ opacity: [0.06, 0.18, 0.06], scale: [1, 1.15, 1] }}
+              transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+              className="absolute w-[500px] h-[500px] rounded-full bg-neon-blue/20 blur-[120px] pointer-events-none"
+            />
+            <div className="relative z-10 flex flex-col items-center gap-8">
+              {/* Logo with neon glow pulse */}
+              <motion.img
+                src="/logocompleto.png"
+                alt="GamesPulse"
+                className="w-56 md:w-72"
+                animate={{
+                  filter: [
+                    'drop-shadow(0 0 6px rgba(0,243,255,0.0))',
+                    'drop-shadow(0 0 32px rgba(0,243,255,0.75))',
+                    'drop-shadow(0 0 6px rgba(0,243,255,0.0))'
+                  ],
+                  scale: [1, 1.03, 1]
+                }}
                 transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                className="absolute w-64 h-64 rounded-full bg-neon-blue/10 blur-3xl pointer-events-none"
               />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.85, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-              >
-                <motion.img
-                  src="/logocompleto.png"
-                  alt="GamesPulse"
-                  className="w-52 md:w-64 relative z-10"
-                  animate={{
-                    filter: [
-                      'drop-shadow(0 0 8px rgba(0,243,255,0.0))',
-                      'drop-shadow(0 0 28px rgba(0,243,255,0.7))',
-                      'drop-shadow(0 0 8px rgba(0,243,255,0.0))'
-                    ]
-                  }}
-                  transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
-                />
-              </motion.div>
-              <div className="mt-10 flex flex-col items-center gap-2">
-                <div className="flex gap-1">
+              {/* Loading indicator */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex gap-2">
                   {[0,1,2].map(i => (
                     <motion.div
                       key={i}
-                      className="w-1.5 h-1.5 rounded-full bg-neon-blue/60"
-                      animate={{ opacity: [0.2, 1, 0.2], y: [0, -4, 0] }}
-                      transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+                      className="w-2 h-2 rounded-full bg-neon-blue"
+                      animate={{ opacity: [0.2, 1, 0.2], y: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.4, delay: i * 0.25, ease: 'easeInOut' }}
                     />
                   ))}
                 </div>
-                <span className="text-neon-blue/40 font-black uppercase tracking-[0.5em] text-[8px]">Syncing Intel</span>
+                <span className="text-white/30 font-bold uppercase tracking-[0.4em] text-[10px]">Caricamento Notizie</span>
               </div>
             </div>
           </div>
