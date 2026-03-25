@@ -487,14 +487,20 @@ export default function App() {
       totalEarnings: 0, totalClicks: 0, totalImpressions: 0, avgCtr: 0
     }
   });
-  const [analyticsConfig, setAnalyticsConfig] = useState<any>({ trackingId: '', verificationTag: '', enabled: false });
+  const [analyticsConfig, setAnalyticsConfig] = useState<any>({ 
+    trackingId: '', 
+    verificationTag: 'gDuVjhcBFsTnVD9P1m9vh-K_Css9b-Z0hRtQM-ypmTs', 
+    enabled: true 
+  });
   const [saveStatus, setSaveStatus] = useState<{type: 'success' | 'error' | null, message: string}>({ type: null, message: '' });
   const [isSavingAdsense, setIsSavingAdsense] = useState(false);
   const [isSavingSeo, setIsSavingSeo] = useState(false);
   const [trafficStats, setTrafficStats] = useState<any>({
-    today: 0, week: 0, month: 0, total: 0,
-    pageviews: [0, 0, 0, 0, 0, 0, 0],
-    sessions: [0, 0, 0, 0, 0, 0, 0],
+    totalVisits: 0,
+    activeNow: 0,
+    averageSession: '0m 0s',
+    bounceRate: '0%',
+    chartData: [0, 0, 0, 0, 0, 0, 0],
     labels: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'],
     topPages: [], topCountries: [], deviceBreakdown: { mobile: 0, desktop: 0, tablet: 0 }
   });
@@ -1967,71 +1973,73 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Google Settings Container */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="bg-zinc-900/40 border border-white/5 rounded-3xl p-8">
-                          <div className="flex items-center gap-4 mb-8">
-                            <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                              <Settings size={20} />
+                      {/* Google Connectivity Hub */}
+                      <div className="bg-zinc-900/40 border border-neon-blue/20 rounded-3xl p-6 lg:p-10 mb-12 shadow-[0_0_40px_rgba(0,243,255,0.02)]">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12 text-left">
+                          <div className="flex items-center gap-6 text-left">
+                            <div className="w-16 h-16 rounded-2xl bg-neon-blue/10 border border-neon-blue/20 flex items-center justify-center text-neon-blue shadow-[0_0_30px_rgba(0,243,255,0.05)]">
+                              <Globe size={32} />
                             </div>
-                            <div>
-                              <h3 className="text-lg font-black text-white uppercase tracking-tighter">Proprietà Google</h3>
-                              <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Parametri di connessione</p>
+                            <div className="text-left">
+                               <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Google Connectivity Hub</h3>
+                               <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-black mt-1">Stato verifica proprietà e indicizzazione</p>
                             </div>
                           </div>
-                          
-                          <div className="space-y-6">
-                            <div>
-                              <label className="block text-[10px] text-white/30 uppercase tracking-widest font-black mb-3 ml-1">Measurement ID</label>
-                              <input 
-                                type="text" 
-                                value={analyticsConfig.trackingId || ''}
-                                onChange={e => setAnalyticsConfig({...analyticsConfig, trackingId: e.target.value})}
-                                placeholder="G-XXXXXXXXXX" 
-                                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white font-mono focus:outline-none focus:border-amber-500/30 transition-all shadow-inner" 
-                              />
+                          <div className="flex items-center gap-3">
+                            <div className="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                              <ShieldCheck size={14} /> Proprietà Pronta
                             </div>
-                            <div>
-                              <label className="block text-[10px] text-white/30 uppercase tracking-widest font-black mb-3 ml-1">Verification Code</label>
-                              <textarea 
-                                rows={2}
-                                value={analyticsConfig.verificationTag || ''}
-                                onChange={e => setAnalyticsConfig({...analyticsConfig, verificationTag: e.target.value})}
-                                placeholder='<meta content="..." />' 
-                                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white font-mono text-[9px] focus:outline-none focus:border-amber-500/30 transition-all resize-none shadow-inner" 
-                              />
-                            </div>
-                            
-                            <div className="flex items-center justify-between p-6 bg-black/40 border border-white/5 rounded-2xl">
-                              <div>
-                                 <p className="text-[10px] font-black text-white uppercase tracking-widest">Integrazione Attiva</p>
-                                 <p className="text-[9px] text-white/20 mt-1 uppercase">Stato tracciamento globale</p>
-                              </div>
-                              <button 
-                                onClick={() => setAnalyticsConfig({...analyticsConfig, enabled: !analyticsConfig.enabled})}
-                                className={`w-14 h-8 rounded-full transition-all relative ${analyticsConfig.enabled ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'bg-white/10'}`}
-                              >
-                                <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all shadow-xl ${analyticsConfig.enabled ? 'right-1' : 'left-1'}`} />
-                              </button>
-                            </div>
-                            
-                            <button 
-                              onClick={() => saveAnalytics(analyticsConfig)}
-                              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-amber-600/20 transition-all uppercase tracking-widest text-[11px] active:scale-[0.98]"
-                            >
-                              Salva Configurazione
-                            </button>
                           </div>
                         </div>
 
-                        <div className="bg-zinc-900/40 border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center">
-                           <div className="w-20 h-20 rounded-full bg-neon-blue/5 border border-neon-blue/10 flex items-center justify-center mb-6">
-                              <Globe size={40} className="text-neon-blue/20" />
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 text-left">
+                           <div className="space-y-8 text-left">
+                              <div className="bg-black/40 border border-white/5 rounded-2xl p-6 lg:p-8 text-left">
+                                <h4 className="text-[10px] text-white/20 uppercase tracking-widest font-black mb-6">Search Console (GSC)</h4>
+                                <p className="text-xs text-white/60 font-bold mb-4">Meta Tag HTML attualmente iniettato nell'header:</p>
+                                <div className="bg-zinc-800/80 p-4 rounded-xl border border-white/5 font-mono text-[9px] text-neon-blue break-all">
+                                  {`<meta name="google-site-verification" content="${analyticsConfig.verificationTag}" />`}
+                                </div>
+                              </div>
+
+                              <div className="bg-black/40 border border-white/5 rounded-2xl p-6 lg:p-8 text-left">
+                                <h4 className="text-[10px] text-white/20 uppercase tracking-widest font-black mb-6">Google Analytics (GA4)</h4>
+                                <div className="space-y-4 text-left">
+                                  <label className="block text-[9px] text-white/40 uppercase tracking-widest font-black ml-1">Universal o Measurement ID</label>
+                                  <input 
+                                    value={analyticsConfig.trackingId || ''}
+                                    onChange={e => setAnalyticsConfig({...analyticsConfig, trackingId: e.target.value})}
+                                    placeholder="G-XXXXXXXXXX"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-neon-blue"
+                                  />
+                                </div>
+                              </div>
                            </div>
-                           <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Live Insights</h3>
-                           <p className="text-xs text-white/40 max-w-[200px] leading-relaxed">
-                             Collega il tuo account Google Search Console per visualizzare dati avanzati in questa sezione.
-                           </p>
+
+                           <div className="bg-neon-blue/5 border border-neon-blue/20 rounded-3xl p-8 lg:p-12 flex flex-col items-center justify-center text-center">
+                              <div className="w-20 h-20 rounded-full bg-neon-blue/10 border border-neon-blue/20 flex items-center justify-center text-neon-blue mb-8 animate-pulse">
+                                <ShieldCheck size={40} />
+                              </div>
+                              <h4 className="text-lg font-black text-white uppercase tracking-widest mb-4">Sito pronto per Google</h4>
+                              <p className="text-xs text-white/40 leading-relaxed max-w-sm">
+                                La configurazione di indicizzazione è stata ottimizzata. Il tag di verifica è presente stabilmente nell'HTML della home page. Clicca sul pulsante sottostante per confermare tutte le impostazioni globali di Google.
+                              </p>
+                              <button 
+                                onClick={async () => {
+                                  setIsSavingAdsense(true);
+                                  try {
+                                    await setDoc(doc(db, 'admin_configs', 'analytics'), analyticsConfig);
+                                    setSaveStatus({ type: 'success', message: 'Configurazione Google Aggiornata!' });
+                                  } catch (e) {
+                                    setSaveStatus({ type: 'error', message: 'Errore nel salvataggio!' });
+                                  }
+                                  setIsSavingAdsense(false);
+                                }}
+                                className="mt-10 w-full py-5 bg-neon-blue text-black font-black text-[11px] rounded-2xl uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-neon-blue/20"
+                              >
+                                {isSavingAdsense ? 'Salvataggio...' : 'Conferma Impostazioni Google'}
+                              </button>
+                           </div>
                         </div>
                       </div>
                     </motion.div>
