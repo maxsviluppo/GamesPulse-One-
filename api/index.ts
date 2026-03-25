@@ -100,7 +100,31 @@ function loadSources() {
     { "id": "gp-es-3", "url": "https://www.3djuegos.com/rss/rss.php", "cat": "News", "name": "3DJuegos", "active": true },
     { "id": "gp-de-1", "url": "https://www.gamestar.de/news/rss/news.rss", "cat": "PC", "name": "GameStar", "active": true },
     { "id": "gp-de-2", "url": "https://www.gamepro.de/rss/news.rss", "cat": "News", "name": "GamePro", "active": true },
-    { "id": "gp-de-3", "url": "http://www.pcgames.de/rss/pcgames.xml", "cat": "PC", "name": "PC Games DE", "active": true }
+    { "id": "gp-de-3", "url": "http://www.pcgames.de/rss/pcgames.xml", "cat": "PC", "name": "PC Games DE", "active": true },
+    // INTERNATIONAL NEW
+    { "id": "gp-vgc", "url": "https://www.videogameschronicle.com/feed/", "cat": "News", "name": "VGC", "active": true },
+    // ITALIAN NEW
+    { "id": "gp-it-6", "url": "https://www.eurogamer.it/feed", "cat": "News", "name": "Eurogamer IT", "active": true },
+    { "id": "gp-it-7", "url": "https://www.thegamesmachine.it/feed/", "cat": "News", "name": "TGM", "active": true },
+    { "id": "gp-it-8", "url": "https://www.tomshw.it/games/feed/", "cat": "News", "name": "Tom's Hardware IT", "active": true },
+    { "id": "gp-it-9", "url": "https://player.it/feed/", "cat": "News", "name": "Player.it", "active": true },
+    { "id": "gp-it-10", "url": "https://hypegame.it/feed/", "cat": "News", "name": "HypeGame", "active": true },
+    { "id": "gp-it-11", "url": "https://www.vgmag.it/feed/", "cat": "News", "name": "Vgmag.it", "active": true },
+    { "id": "gp-it-12", "url": "https://topgamesitalia.com/feed/", "cat": "News", "name": "Top Games Italia", "active": true },
+    { "id": "gp-it-13", "url": "https://4news.it/feed/", "cat": "News", "name": "4News.it", "active": true },
+    { "id": "gp-it-14", "url": "https://gamesurf.tiscali.it/feed/rss", "cat": "News", "name": "Gamesurf", "active": true },
+    { "id": "gp-it-15", "url": "https://www.gamescore.it/feed/", "cat": "News", "name": "GameScore", "active": true },
+    // MOBILE & CLOUD
+    { "id": "gp-mob-1", "url": "https://toucharcade.com/feed/", "cat": "Mobile", "name": "TouchArcade", "active": true },
+    { "id": "gp-mob-2", "url": "https://www.pocketgamer.com/rss", "cat": "Mobile", "name": "Pocket Gamer", "active": true },
+    { "id": "gp-mob-3", "url": "https://www.droidgamers.com/feed/", "cat": "Mobile", "name": "Droid Gamers", "active": true },
+    { "id": "gp-mob-4", "url": "https://www.pockettactics.com/feed", "cat": "Mobile", "name": "Pocket Tactics", "active": true },
+    { "id": "gp-mob-5", "url": "https://www.androidworld.it/tag/giochi-android/feed/", "cat": "Mobile", "name": "AndroidWorld IT", "active": true },
+    { "id": "gp-mob-6", "url": "https://www.iphoneitalia.com/tag/giochi-iphone/feed/", "cat": "Mobile", "name": "iPhoneItalia IT", "active": true },
+    { "id": "gp-mob-7", "url": "https://www.macitynet.it/ios/giochi-ios/feed/", "cat": "Mobile", "name": "Macitynet IT", "active": true },
+    { "id": "gp-020b", "url": "https://www.hdblog.it/giochi/feed/", "cat": "Mobile", "name": "HD Blog Mobile", "active": true },
+    { "id": "gp-cloud-1", "url": "https://9to5google.com/guides/cloud-gaming/feed/", "cat": "Mobile", "name": "9to5Google Cloud", "active": true },
+    { "id": "gp-019b", "url": "https://www.macrumors.com/roundup/apple-arcade/feed/", "cat": "Mobile", "name": "MacRumors Arcade", "active": true }
   ];
 }
 
