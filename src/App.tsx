@@ -40,6 +40,7 @@ import {
   TrendingUp,
   FileText,
   Save,
+  HardDrive,
   RefreshCw as RefreshIcon
 } from 'lucide-react';
 import { 
@@ -637,33 +638,38 @@ export default function App() {
 
   const fetchConfigs = async () => {
     try {
-      // 1. Try Firestore First (Cloud Persistence)
-      const configDocs = await Promise.all([
+      // 1. Concurrent Fetch (Faster)
+      const results = await Promise.allSettled([
         getDoc(doc(db, 'admin_configs', 'seo')),
         getDoc(doc(db, 'admin_configs', 'adsense')),
         getDoc(doc(db, 'admin_configs', 'analytics')),
-        getDoc(doc(db, 'admin_configs', 'traffic'))
+        getDoc(doc(db, 'admin_configs', 'traffic')),
+        fetch('/api/config/seo').then(r => r.json()),
+        fetch('/api/config/adsense').then(r => r.json()),
+        fetch('/api/config/analytics').then(r => r.json()),
+        fetch('/api/config/traffic').then(r => r.json())
       ]);
 
-      const firestoreData = {
-        seo: configDocs[0].exists() ? configDocs[0].data() : null,
-        adsense: configDocs[1].exists() ? configDocs[1].data() : null,
-        analytics: configDocs[2].exists() ? configDocs[2].data() : null,
-        traffic: configDocs[3].exists() ? configDocs[3].data() : null
+      const fireData = (i: number) => {
+        const item = results[i];
+        return item.status === 'fulfilled' && (item.value as any).exists?.() ? (item.value as any).data() : null;
+      };
+      const apiData = (i: number) => {
+        const item = results[i + 4];
+        return item.status === 'fulfilled' ? item.value : null;
       };
 
-      // 2. Fallback to API / Local
-      const [seoApi, adsApi, anaApi, traApi] = await Promise.all([
-        fetch('/api/config/seo').then(r => r.json()).catch(() => ({})),
-        fetch('/api/config/adsense').then(r => r.json()).catch(() => ({})),
-        fetch('/api/config/analytics').then(r => r.json()).catch(() => ({})),
-        fetch('/api/config/traffic').then(r => r.json()).catch(() => ({}))
-      ]);
+      const seo = fireData(0) || apiData(0) || {};
+      const ads = fireData(1) || apiData(1) || { enabled: false, script: '', metaTag: '', adsTxt: '' };
+      const ana = fireData(2) || apiData(2) || { trackingId: '', verificationTag: '', enabled: false };
+      const tra = fireData(3) || apiData(3) || {};
 
-      setSeoConfigs(firestoreData.seo || seoApi || {});
-      setAdsenseConfig(firestoreData.adsense || adsApi || { enabled: false, script: '', metaTag: '', adsTxt: '' });
-      setAnalyticsConfig(firestoreData.analytics || anaApi || { trackingId: '', verificationTag: '', enabled: false });
-      setTrafficStats(firestoreData.traffic || traApi || {});
+      setSeoConfigs(seo);
+      setAdsenseConfig(ads);
+      setAnalyticsConfig(ana);
+      setTrafficStats(tra);
+
+      console.log("Configs Synced:", { seo, ads, ana, tra });
     } catch (e) { 
       console.error("Error fetching configs:", e); 
     }
@@ -780,16 +786,15 @@ export default function App() {
 
   const fetchSources = async () => {
     try {
-      // 1. Try Firestore First
-      const snap = await getDoc(doc(db, 'admin_configs', 'sources'));
-      if (snap.exists()) {
-        setNewsSources(snap.data().list || []);
-        return;
-      }
-      // 2. Fallback to API
-      const res = await fetch('/api/sources');
-      const data = await res.json();
-      setNewsSources(data);
+      const [snap, apiRes] = await Promise.allSettled([
+        getDoc(doc(db, 'admin_configs', 'sources')),
+        fetch('/api/sources').then(r => r.json())
+      ]);
+
+      const fireList = snap.status === 'fulfilled' && snap.value.exists() ? snap.value.data().list : null;
+      const apiList = apiRes.status === 'fulfilled' ? apiRes.value : null;
+
+      setNewsSources(fireList || apiList || []);
     } catch (e) { 
       console.error("Error fetching sources:", e); 
     }
@@ -874,6 +879,39 @@ export default function App() {
       await setDoc(doc(db, 'admin_configs', 'analytics'), config);
       setAnalyticsConfig(config);
     } catch (e) { console.error(e); }
+  };
+
+  const saveAllConfigs = async () => {
+    // Collect all current states and save them to Firestore
+    try {
+       await setDoc(doc(db, 'admin_configs', 'seo'), seoConfigs);
+       await setDoc(doc(db, 'admin_configs', 'adsense'), adsenseConfig);
+       await setDoc(doc(db, 'admin_configs', 'analytics'), analyticsConfig);
+       await setDoc(doc(db, 'admin_configs', 'sources'), { list: newsSources });
+       alert("Tutte le configurazioni salvate sul Cloud (Firestore)!");
+    } catch (e) {
+       alert("Errore nel salvataggio globale");
+    }
+  };
+
+  const forceLoadLocal = async () => {
+    try {
+      const [sources, seo, ads, ana, tra] = await Promise.all([
+        fetch('/api/sources').then(r => r.json()),
+        fetch('/api/config/seo').then(r => r.json()),
+        fetch('/api/config/adsense').then(r => r.json()),
+        fetch('/api/config/analytics').then(r => r.json()),
+        fetch('/api/config/traffic').then(r => r.json())
+      ]);
+      setNewsSources(sources);
+      setSeoConfigs(seo);
+      setAdsenseConfig(ads);
+      setAnalyticsConfig(ana);
+      setTrafficStats(tra);
+      alert("Dati caricati dai file locali (.data/)");
+    } catch (e) {
+      alert("Errore nel caricamento locale");
+    }
   };
 
   // Scroll to top when category or search changes
@@ -1450,7 +1488,25 @@ export default function App() {
                   </button>
                 </nav>
 
-                <div className="p-6 border-t border-white/5 bg-zinc-900/20">
+                <div className="p-6 border-t border-white/5 bg-zinc-900/20 space-y-3">
+                  <button 
+                    onClick={saveAllConfigs}
+                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-neon-blue text-black hover:bg-neon-blue/80 transition-all text-[10px] font-black uppercase tracking-widest shadow-[0_0_20px_rgba(0,243,255,0.2)]"
+                  >
+                    <Save size={14} /> Salva Tutto Cloud
+                  </button>
+                  <button 
+                    onClick={forceLoadLocal}
+                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-black uppercase tracking-widest"
+                  >
+                    <HardDrive size={14} /> Carica da File
+                  </button>
+                  <button 
+                    onClick={() => { fetchConfigs(); fetchSources(); }}
+                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-black uppercase tracking-widest"
+                  >
+                    <RefreshCw size={14} className={isSavingSeo ? 'animate-spin' : ''} /> Refresh Data
+                  </button>
                   <button 
                     onClick={() => { setIsAdminLoggedIn(false); setShowAdminDashboard(false); }}
                     className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all text-xs font-black uppercase tracking-widest"
@@ -1765,7 +1821,7 @@ export default function App() {
                                   <motion.div 
                                     initial={{ height: 0 }}
                                     animate={{ height: `${mobileH}%` }}
-                                    className="w-full bg-gradient-to-t from-neon-blue600 to-neon-blue rounded-t-full opacity-30 absolute left-2 group-hover:opacity-60 transition-all"
+                                    className="w-full bg-gradient-to-t from-neon-blue/60 to-neon-blue rounded-t-full opacity-30 absolute left-2 group-hover:opacity-60 transition-all"
                                   />
                                 </div>
                                 <span className="text-[9px] font-black text-white/10 uppercase tracking-widest group-hover:text-white transition-colors">{label}</span>
