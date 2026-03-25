@@ -1,4 +1,9 @@
-import fs from 'fs';
+import express from "express";
+import path from "path";
+import fs from "fs";
+import Parser from "rss-parser";
+import cors from "cors";
+import * as cheerio from "cheerio";
 
 // Constants
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -11,17 +16,6 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 // Ensure news_sources.json exists with defaults if not present
-if (!fs.existsSync(SOURCES_FILE)) {
-  const DEFAULT_SOURCES = [
-    { "id": "gp-001", "url": "https://it.ign.com/feed.xml", "cat": "News", "name": "IGN IT", "active": true },
-    { "id": "gp-002", "url": "https://multiplayer.it/feed/", "cat": "News", "name": "Multiplayer", "active": true },
-    { "id": "gp-003", "url": "https://www.everyeye.it/feed/", "cat": "News", "name": "Everyeye", "active": true },
-    { "id": "gp-004", "url": "https://www.gamesource.it/feed/", "cat": "News", "name": "GameSource", "active": true },
-    { "id": "gp-005", "url": "https://www.spaziogames.it/feed/", "cat": "News", "name": "Spaziogames", "active": true }
-  ];
-  fs.writeFileSync(SOURCES_FILE, JSON.stringify(DEFAULT_SOURCES, null, 2));
-}
-
 const app = express();
 const parser = new Parser({
   customFields: {
@@ -46,12 +40,24 @@ app.use(express.json());
 // Helper to load sources
 function loadSources() {
   try {
-    const data = fs.readFileSync(SOURCES_FILE, 'utf8');
-    return JSON.parse(data);
+    if (fs.existsSync(SOURCES_FILE)) {
+      const data = fs.readFileSync(SOURCES_FILE, 'utf8');
+      return JSON.parse(data);
+    }
   } catch (e) {
     console.error("Error loading sources:", e);
-    return [];
   }
+  
+  // Default sources if file doesn't exist or is unreadable
+  return [
+    { "id": "gp-001", "url": "https://it.ign.com/feed.xml", "cat": "News", "name": "IGN IT", "active": true },
+    { "id": "gp-002", "url": "https://multiplayer.it/feed/", "cat": "News", "name": "Multiplayer", "active": true },
+    { "id": "gp-011", "url": "https://www.everyeye.it/feed/", "cat": "News", "name": "Everyeye", "active": true },
+    { "id": "gp-013", "url": "https://www.pushsquare.com/feeds/latest", "cat": "PS5", "name": "Push Square", "active": true },
+    { "id": "gp-014", "url": "https://www.purexbox.com/feeds/latest", "cat": "Xbox", "name": "Pure Xbox", "active": true },
+    { "id": "gp-012", "url": "https://www.nintendolife.com/feeds/latest", "cat": "Switch", "name": "Nintendo Life", "active": true },
+    { "id": "gp-016", "url": "https://www.theverge.com/rss/index.xml", "cat": "Tech", "name": "The Verge", "active": true }
+  ];
 }
 
 // Endpoints for admin
@@ -62,10 +68,12 @@ app.get("/api/sources", (req, res) => {
 app.post("/api/sources", (req, res) => {
   try {
     const sources = req.body;
-    fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
-    // Clear cache to reflect change
+    // Only attempt to write if not in Vercel or if we're in a writable env (rare)
+    if (process.env.VERCEL !== '1') {
+      fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
+    }
     lastFetchTime = 0;
-    res.json({ success: true });
+    res.json({ success: true, warning: process.env.VERCEL === '1' ? 'Local saving not possible on Vercel' : undefined });
   } catch (e) {
     res.status(500).json({ error: "Failed to save sources" });
   }
@@ -275,13 +283,6 @@ export default app;
 
 async function startServer() {
   const PORT = 3010;
-  if (process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1" && createViteServer) {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  }
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });

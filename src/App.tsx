@@ -634,27 +634,58 @@ export default function App() {
     fetchConfigs();
   }, []);
 
-  const fetchSources = async () => {
-    try {
-      const res = await fetch('/api/sources');
-      const data = await res.json();
-      setNewsSources(data);
-    } catch (e) { console.error("Error fetching sources:", e); }
-  };
 
   const fetchConfigs = async () => {
     try {
-      const [seo, ads, ana, tra] = await Promise.all([
-        fetch('/api/config/seo').then(r => r.json()),
-        fetch('/api/config/adsense').then(r => r.json()),
-        fetch('/api/config/analytics').then(r => r.json()),
-        fetch('/api/config/traffic').then(r => r.json())
+      // 1. Try Firestore First (Cloud Persistence)
+      const configDocs = await Promise.all([
+        getDoc(doc(db, 'admin_configs', 'seo')),
+        getDoc(doc(db, 'admin_configs', 'adsense')),
+        getDoc(doc(db, 'admin_configs', 'analytics')),
+        getDoc(doc(db, 'admin_configs', 'traffic'))
       ]);
-      setSeoConfigs(seo || {});
-      setAdsenseConfig(ads || { enabled: false, script: '', metaTag: '', adsTxt: '' });
-      setAnalyticsConfig(ana || { trackingId: '', verificationTag: '', enabled: false });
-      setTrafficStats(tra || {});
-    } catch (e) { console.error("Error fetching configs:", e); }
+
+      const firestoreData = {
+        seo: configDocs[0].exists() ? configDocs[0].data() : null,
+        adsense: configDocs[1].exists() ? configDocs[1].data() : null,
+        analytics: configDocs[2].exists() ? configDocs[2].data() : null,
+        traffic: configDocs[3].exists() ? configDocs[3].data() : null
+      };
+
+      // 2. Fallback to API / Local
+      const [seoApi, adsApi, anaApi, traApi] = await Promise.all([
+        fetch('/api/config/seo').then(r => r.json()).catch(() => ({})),
+        fetch('/api/config/adsense').then(r => r.json()).catch(() => ({})),
+        fetch('/api/config/analytics').then(r => r.json()).catch(() => ({})),
+        fetch('/api/config/traffic').then(r => r.json()).catch(() => ({}))
+      ]);
+
+      setSeoConfigs(firestoreData.seo || seoApi || {});
+      setAdsenseConfig(firestoreData.adsense || adsApi || { enabled: false, script: '', metaTag: '', adsTxt: '' });
+      setAnalyticsConfig(firestoreData.analytics || anaApi || { trackingId: '', verificationTag: '', enabled: false });
+      setTrafficStats(firestoreData.traffic || traApi || {});
+    } catch (e) { 
+      console.error("Error fetching configs:", e); 
+    }
+  };
+
+  const saveSeoConfig = async (catId: string, config: any) => {
+    setIsSavingSeo(true);
+    try {
+      const newConfigs = { ...seoConfigs, [catId]: config };
+      // Save to API
+      await fetch('/api/config/seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfigs)
+      });
+      // Save to Firestore (Permanent)
+      await setDoc(doc(db, 'admin_configs', 'seo'), newConfigs);
+    } catch (e) {
+      console.error("Error saving SEO:", e);
+    } finally {
+      setIsSavingSeo(false);
+    }
   };
 
   // SEO, Analytics & AdSense Injection Logic
@@ -747,13 +778,34 @@ export default function App() {
     }
   };
 
+  const fetchSources = async () => {
+    try {
+      // 1. Try Firestore First
+      const snap = await getDoc(doc(db, 'admin_configs', 'sources'));
+      if (snap.exists()) {
+        setNewsSources(snap.data().list || []);
+        return;
+      }
+      // 2. Fallback to API
+      const res = await fetch('/api/sources');
+      const data = await res.json();
+      setNewsSources(data);
+    } catch (e) { 
+      console.error("Error fetching sources:", e); 
+    }
+  };
+
   const saveSources = async (sources: Source[]) => {
     try {
+      // Local API save
       await fetch('/api/sources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sources)
       });
+      // Cloud Firestore save (Permanent)
+      await setDoc(doc(db, 'admin_configs', 'sources'), { list: sources });
+      
       setSaveStatus({ type: 'success', message: 'Fonti aggiornate con successo' });
       setTimeout(() => setSaveStatus({ type: null, message: '' }), 3000);
     } catch (e) {
@@ -797,19 +849,6 @@ export default function App() {
     }
   };
 
-  const saveSeoConfig = async (id: string, config: any) => {
-     setIsSavingSeo(true);
-     try {
-       const updated = { ...seoConfigs, [id]: config };
-       await fetch('/api/config/seo', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify(updated)
-       });
-       setSeoConfigs(updated);
-     } catch (e) { console.error(e); }
-     finally { setIsSavingSeo(false); }
-  };
 
   const saveAdSense = async (config: any) => {
     setIsSavingAdsense(true);
@@ -819,6 +858,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
       });
+      await setDoc(doc(db, 'admin_configs', 'adsense'), config);
       setAdsenseConfig(config);
     } catch (e) { console.error(e); }
     finally { setIsSavingAdsense(false); }
@@ -831,6 +871,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
       });
+      await setDoc(doc(db, 'admin_configs', 'analytics'), config);
       setAnalyticsConfig(config);
     } catch (e) { console.error(e); }
   };
