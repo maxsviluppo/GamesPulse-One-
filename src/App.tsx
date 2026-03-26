@@ -40,7 +40,8 @@ import {
   FileText,
   Save,
   HardDrive,
-  RefreshCw
+  RefreshCw,
+  BookOpen
 } from 'lucide-react';
 import { 
   auth, 
@@ -92,6 +93,7 @@ const CATEGORIES = [
   { id: 'pc', label: 'PC', icon: <Monitor size={20} />, color: '#bc13fe' },
   { id: 'tech', label: 'Tech', icon: <Cpu size={20} />, color: '#39ff14' },
   { id: 'mobile', label: 'Mobile', icon: <Smartphone size={20} />, color: '#ff00ff' },
+  { id: 'manga', label: 'Manga', icon: <BookOpen size={20} />, color: '#ffd700' },
 ];
 
 const getCategory = (item: NewsItem) => {
@@ -193,6 +195,18 @@ const getCategory = (item: NewsItem) => {
     source.includes('rock paper shotgun')
   ) return 'pc';
   
+  // Manga
+  if (
+    source.includes('animenewsnetwork') || 
+    source.includes('cbr') || 
+    source.includes('animeclick') || 
+    source.includes('natalie.mu') || 
+    source.includes('mangatherapy') ||
+    title.includes('manga') || 
+    title.includes('anime') || 
+    title.includes('otaku')
+  ) return 'manga';
+
   return 'general';
 };
 
@@ -444,7 +458,29 @@ export default function App() {
     { "id": "gp-es-3", "url": "https://www.3djuegos.com/rss/rss.php", "cat": "News", "name": "3DJuegos", "active": true },
     { "id": "gp-de-1", "url": "https://www.gamestar.de/news/rss/news.rss", "cat": "PC", "name": "GameStar", "active": true },
     { "id": "gp-de-2", "url": "https://www.gamepro.de/rss/news.rss", "cat": "News", "name": "GamePro", "active": true },
-    { "id": "gp-de-3", "url": "http://www.pcgames.de/rss/pcgames.xml", "cat": "PC", "name": "PC Games DE", "active": true }
+    { "id": "gp-de-3", "url": "http://www.pcgames.de/rss/pcgames.xml", "cat": "PC", "name": "PC Games DE", "active": true },
+    // INTERNATIONAL NEW (VGC, Eurogamer, etc.)
+    { "id": "gp-vgc", "url": "https://www.videogameschronicle.com/feed/", "cat": "News", "name": "VGC", "active": true },
+    { "id": "gp-it-6", "url": "https://www.eurogamer.it/feed", "cat": "News", "name": "Eurogamer IT", "active": true },
+    { "id": "gp-it-7", "url": "https://www.thegamesmachine.it/feed/", "cat": "News", "name": "TGM", "active": true },
+    // JAPAN
+    { "id": "gp-jp-1", "url": "https://www.famitsu.com/rss/nintendo.xml", "cat": "Switch", "name": "Famitsu", "active": true },
+    { "id": "gp-jp-2", "url": "https://www.4gamer.net/rss/index.xml", "cat": "News", "name": "4Gamer.net", "active": true },
+    { "id": "gp-jp-3", "url": "https://www.inside-games.jp/rss/nintendo/", "cat": "Switch", "name": "Nintendo Inside", "active": true },
+    // CHINA
+    { "id": "gp-cn-1", "url": "http://www.a9vg.com/rss/news/", "cat": "PS5", "name": "A9VG", "active": true },
+    { "id": "gp-cn-2", "url": "http://www.tgbus.com/rss/", "cat": "Retro", "name": "TGBUS", "active": true },
+    { "id": "gp-cn-3", "url": "http://games.sina.com.cn/rss/all.xml", "cat": "News", "name": "Sina Games", "active": true },
+    // KOREA
+    { "id": "gp-kr-1", "url": "https://m.inven.co.kr/rss/news/", "cat": "Xbox", "name": "Inven", "active": true },
+    { "id": "gp-kr-2", "url": "https://www.thisisgame.com/rss/", "cat": "Industry", "name": "This Is Game", "active": true },
+    { "id": "gp-kr-3", "url": "https://ruliweb.com/rss", "cat": "Xbox", "name": "Ruliweb", "active": true },
+    // MANGA
+    { "id": "gp-manga-1", "url": "https://www.animenewsnetwork.com/all/rss.xml", "cat": "Manga", "name": "Anime News Network", "active": true },
+    { "id": "gp-manga-2", "url": "https://www.cbr.com/category/manga/feed/", "cat": "Manga", "name": "CBR Manga", "active": true },
+    { "id": "gp-manga-3", "url": "https://www.animeclick.it/rss/news.php", "cat": "Manga", "name": "AnimeClick", "active": true },
+    { "id": "gp-manga-4", "url": "https://natalie.mu/comic/feed", "cat": "Manga", "name": "Natalie Manga", "active": true },
+    { "id": "gp-manga-5", "url": "https://www.mangatherapy.com/feed/", "cat": "Manga", "name": "Manga Therapy", "active": true }
   ]);
 
   const [newSource, setNewSource] = useState({ name: '', url: '', cat: 'News' });
@@ -498,6 +534,11 @@ export default function App() {
       "title": "Gaming Industry News | Business, Acquisizioni & Sviluppatori | GamesPulse",
       "description": "Le notizie dal settore dell'industria videoludica: acquisizioni, licenziamenti, rapporti di vendita, annunci di publisher e notizie finanziarie sul gaming.",
       "keywords": "games industry news, acquisizioni gaming, microsoft activision, sony studio, take-two, ea acquisizioni, layoffs gaming, sviluppatori indie, gamesindustry biz"
+    },
+    "manga": {
+      "title": "News Manga & Anime | Ultime Uscite e Recensioni | GamesPulse",
+      "description": "Resta aggiornato sul mondo dei manga e degli anime. Recensioni dei volumi, anticipazioni sugli episodi, news dall'industria giapponese e molto altro.",
+      "keywords": "manga news, anime news, recensioni manga, animeclick, natalie manga, shonen jump, seinen, manga therapy, animenewsnetwork"
     }
   });
   const [adsenseConfig, setAdsenseConfig] = useState<any>({
@@ -696,40 +737,45 @@ export default function App() {
     setIsSearchOpen(false);
   };
 
-  const handleShare = async () => {
+  const handleShare = async (isSiteShare = false) => {
+    const shareUrl = isSiteShare ? window.location.origin : (currentItem?.link || window.location.origin);
+    const shareTitle = isSiteShare ? 'GamesPulse | Your Daily Gaming Intel' : (currentItem?.title || 'GamesPulse | Your Daily Gaming Intel');
+    const shareText = isSiteShare || !currentItem 
+      ? 'Resta aggiornato con le ultime notizie dal mondo dei videogiochi su GamesPulse!'
+      : `Guarda questa notizia su GamesPulse: ${currentItem.title}`;
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'GamesPulse News',
-          text: 'Check out the latest gaming news on GamesPulse!',
-          url: window.location.href,
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
         });
       } catch (err) {
-        console.error('Error sharing:', err);
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        }
       }
     } else {
-      // Fallback: Copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Link copiato negli appunti!');
+      } catch (err) {
+        console.error('Clipboard error:', err);
+      }
     }
   };
 
-  const handleSend = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'GamesPulse News',
-          text: 'Ehi, guarda questa app di notizie sui videogiochi!',
-          url: window.location.href,
-        });
-      } catch (err) {
-        console.error('Error sharing:', err);
-      }
-    } else {
-      // Fallback: Copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link copiato negli appunti!');
-    }
+  const handleSend = async (isSiteShare = false) => {
+    const shareUrl = isSiteShare ? window.location.origin : (currentItem?.link || window.location.origin);
+    const shareTitle = isSiteShare ? 'GamesPulse' : (currentItem?.title || 'GamesPulse');
+    const shareText = isSiteShare || !currentItem 
+      ? 'Guarda che figata questo sito per le news gaming: ' 
+      : `Guarda questa notizia su GamesPulse: ${shareTitle} - `;
+    
+    // Fallback to WhatsApp for "Send to a friend" if navigator.share fails or just as preferred method
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + shareUrl)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const SETTINGS_ITEMS = [
@@ -751,8 +797,8 @@ export default function App() {
         setIsSettingsOpen(false);
       } 
     },
-    { id: 'share', label: 'Condividi', icon: <Share2 size={20} />, action: handleShare },
-    { id: 'send', label: 'Invia ad un amico', icon: <Send size={20} />, action: handleSend },
+    { id: 'share', label: 'Condividi App', icon: <Share2 size={20} />, action: () => handleShare(true) },
+    { id: 'send', label: 'Invia ad un amico', icon: <Send size={20} />, action: () => handleSend(true) },
     { id: 'refresh', label: 'Aggiorna', icon: <RefreshCw size={20} />, action: () => fetchNews(true) },
     user ? { id: 'logout', label: 'Esci', icon: <LogOut size={20} />, action: logout } : null
   ].filter(Boolean) as any[];
@@ -881,7 +927,7 @@ export default function App() {
           const d = new Date();
           d.setDate(d.getDate() - i);
           const key = d.toISOString().split('T')[0];
-          const dayData = daily[key] || { total: 0, desktop: 0, mobile: 0 };
+          const dayData = daily[key] || { total: 0, desktop: 0, mobile: 0, newUsers: 0 };
           
           const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
           const label = i === 0 ? 'Oggi' : days[d.getDay()];
@@ -894,6 +940,7 @@ export default function App() {
         const normalizedData = last5Days.map(d => ({
           desktop: Math.round(((d.desktop || 0) / maxVal) * 100),
           mobile: Math.round(((d.mobile || 0) / maxVal) * 100),
+          newUsers: Math.round(((d.newUsers || 0) / maxVal) * 100),
           total: d.total || 0,
           label: d.label
         }));
@@ -903,6 +950,7 @@ export default function App() {
           totalVisits: data.today || 0,
           activeNow: data.live || Math.floor(Math.random() * 10) + 1,
           todayVisits: data.today || 0,
+          todayNewUsers: daily[new Date().toISOString().split('T')[0]]?.newUsers || 0,
           totalVisitors: data.total || 0,
           averageSession: data.avgSession || '2m 14s',
           bounceRate: data.bounceRate || '34%',
@@ -942,13 +990,26 @@ export default function App() {
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const deviceType = isMobile ? 'mobile' : 'desktop';
 
-        await setDoc(trafficDoc, {
+        // Local new user detection
+        const hasVisitedBefore = localStorage.getItem('gamespulse_v2_v');
+        const isNewUser = !hasVisitedBefore;
+        if (isNewUser) {
+          localStorage.setItem('gamespulse_v2_v', '1');
+        }
+
+        const updates: any = {
           total: increment(1),
           today: resetToday ? 1 : increment(1),
           lastVisit: new Date().toISOString(),
           [`daily.${todayKey}.total`]: increment(1),
           [`daily.${todayKey}.${deviceType}`]: increment(1)
-        }, { merge: true });
+        };
+
+        if (isNewUser) {
+          updates[`daily.${todayKey}.newUsers`] = increment(1);
+        }
+
+        await setDoc(trafficDoc, updates, { merge: true });
       } catch (e) {
         console.warn("Traffic tracking limited by permissions or network");
       }
@@ -1418,6 +1479,11 @@ export default function App() {
                         className={selectedCategory === 'favorites' ? 'text-white' : ''} 
                       />
                     ) : cat.icon}
+                    {cat.id === 'manga' && new Date() < new Date('2026-04-15') && (
+                      <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.5)] animate-pulse z-30">
+                        NEW
+                      </div>
+                    )}
                   </div>
                 </motion.button>
               ))}
@@ -2085,9 +2151,9 @@ export default function App() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                         {[
                           { label: 'Visite Oggi', value: trafficStats.totalVisits || '0', trend: '+12%', icon: <Users size={16} />, color: 'text-emerald-400' },
+                          { label: 'Nuovi Utenti', value: trafficStats.todayNewUsers || '0', trend: 'Today', icon: <User size={16} />, color: 'text-rose-500' },
                           { label: 'Utenti Live', value: trafficStats.activeNow || '0', trend: 'Live', icon: <Activity size={16} />, color: 'text-rose-500' },
                           { label: 'Tempo Medio', value: trafficStats.averageSession || '0', trend: '+5%', icon: <Clock size={16} />, color: 'text-amber-400' },
-                          { label: 'Bounce Rate', value: trafficStats.bounceRate || '0', trend: '-2%', icon: <TrendingUp size={16} />, color: 'text-neon-blue' },
                         ].map((stat, i) => (
                           <div key={i} className="bg-zinc-900/40 border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -2110,34 +2176,44 @@ export default function App() {
                             <h3 className="text-xl font-black text-white uppercase tracking-tighter">Analisi Ingressi 5gg</h3>
                             <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mt-1">Dati storici in tempo reale</p>
                           </div>
-                          <div className="flex gap-2">
-                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                               <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                               <span className="text-[9px] font-black text-white uppercase">Mobile</span>
-                             </div>
-                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neon-blue/10 border border-neon-blue/20">
-                               <div className="w-2 h-2 rounded-full bg-neon-blue" />
-                               <span className="text-[9px] font-black text-white uppercase">Desktop</span>
-                             </div>
-                          </div>
+                           <div className="flex gap-2">
+                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                                <div className="w-2 h-2 rounded-full bg-orange-500" />
+                                <span className="text-[9px] font-black text-white uppercase">New Users</span>
+                              </div>
+                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                <span className="text-[9px] font-black text-white uppercase">Mobile</span>
+                              </div>
+                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neon-blue/10 border border-neon-blue/20">
+                                <div className="w-2 h-2 rounded-full bg-neon-blue" />
+                                <span className="text-[9px] font-black text-white uppercase">Desktop</span>
+                              </div>
+                           </div>
                         </div>
 
                         {/* Custom SVG Chart (Conceptual) */}
                         <div className="relative h-64 w-full flex items-end justify-between px-4 pb-4">
                           {(trafficStats.chartData || [40, 65, 45, 90, 75]).map((d: any, i: number) => {
-                            const desktopH = typeof d === 'object' ? d.desktop : d;
-                            const mobileH = typeof d === 'object' ? d.mobile : d * 0.7;
-                            const label = (trafficStats.labels && trafficStats.labels[i]) || `D${i+1}`;
-                            const realVal = (trafficStats.realValues && trafficStats.realValues[i]) || 0;
+                             const desktopH = typeof d === 'object' ? d.desktop : d;
+                             const mobileH = typeof d === 'object' ? d.mobile : d * 0.7;
+                             const newUsersH = typeof d === 'object' ? d.newUsers : d * 0.3;
+                             const label = (trafficStats.labels && trafficStats.labels[i]) || `D${i+1}`;
+                             const realVal = (trafficStats.realValues && trafficStats.realValues[i]) || 0;
                             
                             return (
                               <div key={i} className="flex flex-col items-center gap-4 w-12 group">
-                                <div className="relative w-4 h-48 flex items-end gap-1">
+                                <div className="relative w-5 h-48 flex items-end gap-0.5">
                                   {/* Tooltip on hover */}
                                   <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-2 py-1 rounded text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                                     {realVal} visite
                                   </div>
                                   
+                                  <motion.div 
+                                    initial={{ height: 0 }}
+                                    animate={{ height: `${newUsersH}%` }}
+                                    className="w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-full relative shadow-[0_0_10px_rgba(251,146,60,0.1)] group-hover:shadow-[0_0_20px_rgba(251,146,60,0.3)] transition-all"
+                                  />
                                   <motion.div 
                                     initial={{ height: 0 }}
                                     animate={{ height: `${mobileH}%` }}
@@ -2146,7 +2222,7 @@ export default function App() {
                                   <motion.div 
                                     initial={{ height: 0 }}
                                     animate={{ height: `${desktopH}%` }}
-                                    className="w-full bg-gradient-to-t from-neon-blue/60 to-neon-blue rounded-t-full opacity-30 absolute left-2group-hover:opacity-60 transition-all"
+                                    className="w-full bg-gradient-to-t from-neon-blue/60 to-neon-blue rounded-t-full relative shadow-[0_0_10px_rgba(0,243,255,0.1)] group-hover:shadow-[0_0_20px_rgba(0,243,255,0.3)] transition-all"
                                   />
                                 </div>
                                 <span className="text-[9px] font-black text-white/10 uppercase tracking-widest group-hover:text-white transition-colors">{label}</span>
