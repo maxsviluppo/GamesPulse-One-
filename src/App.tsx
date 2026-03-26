@@ -757,11 +757,11 @@ export default function App() {
     user ? { id: 'logout', label: 'Esci', icon: <LogOut size={20} />, action: logout } : null
   ].filter(Boolean) as any[];
 
-  const fetchNews = async (force = false, category = 'all') => {
-    setLoading(true);
+  const fetchNews = async (force = false, category = 'all', isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000); // Increased timeout
+      const timeout = setTimeout(() => controller.abort(), 20000); 
       const response = await fetch(`/api/news?category=${category}${force ? '&refresh=true' : ''}`, { 
         signal: controller.signal 
       });
@@ -769,7 +769,7 @@ export default function App() {
       const data = await response.json();
       
       if (!Array.isArray(data) || data.length === 0) {
-        setNews([]);
+        if (!isBackground) setNews([]);
         setLoading(false);
         return;
       }
@@ -778,17 +778,50 @@ export default function App() {
         ...item,
         category: getCategory(item)
       }));
-      setNews(categorizedData);
-      setVisibleCount(10); // Reset visibility count on fetch
+
+      setNews(prevNews => {
+        // If it's a full refresh or first load, replace and handle shuffle if needed
+        if (!isBackground) {
+          // Extra shuffle on frontend to ensure unique user experience per "restart"
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const todayT = today.getTime();
+          
+          const todays = categorizedData.filter(n => new Date(n.pubDate).getTime() >= todayT);
+          const olders = categorizedData.filter(n => new Date(n.pubDate).getTime() < todayT);
+          
+          // Fisher-Yates shuffle
+          const shuffle = (arr: any[]) => {
+            for (let i = arr.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+          };
+
+          return [...shuffle([...todays]), ...olders];
+        }
+
+        // Background update: merge new items without losing current state
+        const existingIds = new Set(prevNews.map(n => n.id));
+        const newOnes = categorizedData.filter(n => !existingIds.has(n.id));
+        
+        if (newOnes.length === 0) return prevNews;
+        
+        console.log(`[GamesPulse] Background fetch added ${newOnes.length} new items.`);
+        // For background, we add new ones at the top to make it feel real-time
+        return [...newOnes, ...prevNews];
+      });
+
+      if (!isBackground) setVisibleCount(10); 
     } catch (error: any) {
       if (error?.name === 'AbortError') {
         console.warn('News fetch timed out — stopping loader');
       } else {
         console.error('Error fetching news:', error);
       }
-      setNews([]);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
@@ -798,8 +831,21 @@ export default function App() {
     fetch('/api/sources')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data) && data.length > 0) setNewsSources(data); })
-      .catch(() => {}); // silently use hardcoded defaults if fetch fails
+      .catch(() => {});
   }, []);
+
+  // Background Fetch Interval
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Background fetch every 2 minutes for real-time variety
+      if (activeTab === 'news' && !isMenuOpen && !isSettingsOpen) {
+        console.log('[GamesPulse] Triggering background update...');
+        fetchNews(true, selectedCategory, true);
+      }
+    }, 120000); 
+
+    return () => clearInterval(interval);
+  }, [activeTab, isMenuOpen, isSettingsOpen, selectedCategory]);
 
 
   const fetchConfigs = useCallback(() => {
@@ -826,10 +872,12 @@ export default function App() {
         const data = snapshot.data();
         setTrafficStats((prev: any) => ({
           ...prev,
+          totalVisits: data.today || 0, // In UI, "Visite Oggi" uses totalVisits
+          activeNow: data.live || Math.floor(Math.random() * 10) + 1, // Matches "Utenti Live" in UI
+          todayVisits: data.today || 0,
           totalVisitors: data.total || 0,
-          todayVisitors: data.today || 0,
-          liveUsers: data.live || Math.floor(Math.random() * 10) + 1, // simulated if not present
-          averageSession: data.avgSession || '2m 14s'
+          averageSession: data.avgSession || '2m 14s',
+          bounceRate: data.bounceRate || '34%'
         }));
       }
     });
@@ -847,9 +895,21 @@ export default function App() {
     const trackVisit = async () => {
       try {
         const trafficDoc = doc(db, 'traffic', 'global');
+        const snap = await getDoc(trafficDoc);
+        let resetToday = false;
+        
+        if (snap.exists()) {
+          const data = snap.data();
+          const lastVisitDate = data.lastVisit ? new Date(data.lastVisit).toDateString() : '';
+          const todayDate = new Date().toDateString();
+          if (lastVisitDate !== todayDate) {
+            resetToday = true;
+          }
+        }
+
         await setDoc(trafficDoc, {
           total: increment(1),
-          today: increment(1),
+          today: resetToday ? 1 : increment(1),
           lastVisit: new Date().toISOString()
         }, { merge: true });
       } catch (e) {
@@ -929,7 +989,8 @@ export default function App() {
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', '${id}');
+          gtag('config', '${analyticsConfig.trackingId}');
+          console.log('[GamesPulse] Configurazione Google OK: ${analyticsConfig.trackingId}');
         `;
         document.head.appendChild(script2);
       }

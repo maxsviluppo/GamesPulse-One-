@@ -203,52 +203,75 @@ app.get("/api/news", async (req, res) => {
     const sources = loadSources().filter((s: any) => s.active !== false);
     const feedPromises = sources.map(async (source: any) => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
       try {
-        const response = await fetch(source.url, {
+        // Cache busting for RSS feeds
+        const fetchUrl = source.url + (source.url.includes('?') ? '&' : '?') + `_gp_refresh=${now}`;
+        
+        const response = await fetch(fetchUrl, {
           signal: controller.signal,
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+            'Cache-Control': 'no-cache'
           }
         });
         clearTimeout(timeoutId);
         if (!response.ok) return [];
         let xml = await response.text();
         const feed = await parser.parseString(xml);
-        return feed.items.map(item => ({
-          id: item.guid || item.link,
+        return feed.items.slice(0, 30).map(item => ({
+          id: item.guid || item.link || `${source.id}-${Math.random()}`,
           title: item.title,
           link: item.link,
-          pubDate: item.pubDate,
+          pubDate: item.pubDate || new Date().toISOString(),
           content: item.contentSnippet || item.content,
           source: source.name,
+          category: source.cat || 'General',
           image: extractImage(item),
           video: extractVideo(item),
         }));
-      } catch (e) { return []; }
+      } catch (e) { 
+        clearTimeout(timeoutId);
+        return []; 
+      }
     });
+    
     const results = await Promise.all(feedPromises);
-    const allNews = results.flat().sort((a, b) => {
-      const dateA = new Date(a.pubDate).getTime();
-      const dateB = new Date(b.pubDate).getTime();
-      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+    const allItems = results.flat().filter(item => item.title && item.link);
+
+    // Shuffle helper
+    const shuffleArray = (array: any[]) => {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    };
+
+    // Sorting and Today's Shuffling Logic
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+
+    const todayItems = allItems.filter(item => new Date(item.pubDate).getTime() >= todayTimestamp);
+    const olderItems = allItems.filter(item => new Date(item.pubDate).getTime() < todayTimestamp);
+
+    // Shuffle items from today
+    const shuffledToday = shuffleArray([...todayItems]);
+    
+    // Sort older items by date descending
+    const sortedOlder = olderItems.sort((a, b) => {
+      const dA = new Date(a.pubDate).getTime();
+      const dB = new Date(b.pubDate).getTime();
+      return (isNaN(dB) ? 0 : dB) - (isNaN(dA) ? 0 : dA);
     });
-    const slicedNews = allNews.slice(0, 500);
-    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 100);
-    if (newsToEnhance.length > 0) {
-      await Promise.all(newsToEnhance.map(async (item) => {
-        const meta = await fetchMetaInfo(item.link);
-        if (meta.image && !item.image) item.image = meta.image;
-        if (meta.video && !item.video) item.video = meta.video;
-        if (!item.image) {
-          item.image = `https://picsum.photos/seed/${encodeURIComponent(item.title.substring(0, 10))}/800/450`;
-        }
-      }));
-    }
-    newsCache = slicedNews;
+
+    const finalResult = [...shuffledToday, ...sortedOlder].slice(0, 1000);
+
+    newsCache = finalResult;
     lastFetchTime = Date.now();
-    res.json(slicedNews);
+    res.json(finalResult);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch news" });
   }
