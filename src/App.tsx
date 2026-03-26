@@ -534,8 +534,8 @@ export default function App() {
     activeNow: 0,
     averageSession: '0m 0s',
     bounceRate: '0%',
-    chartData: [0, 0, 0, 0, 0, 0, 0],
-    labels: ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'],
+    chartData: [0, 0, 0, 0, 0],
+    labels: ['D5', 'D4', 'D3', 'D2', 'Oggi'],
     topPages: [], topCountries: [], deviceBreakdown: { mobile: 0, desktop: 0, tablet: 0 }
   });
   const [feedCategoryFilter, setFeedCategoryFilter] = useState('News');
@@ -870,14 +870,45 @@ export default function App() {
     const unsubTraffic = onSnapshot(doc(db, 'traffic', 'global'), (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
+        
+        // Process daily history for chart
+        const daily = data.daily || {};
+        const last5Days: any[] = [];
+        const last5Labels: string[] = [];
+        
+        // Generate last 5 days including today
+        for (let i = 4; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const key = d.toISOString().split('T')[0];
+          const dayData = daily[key] || { total: 0, desktop: 0, mobile: 0 };
+          
+          const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+          const label = i === 0 ? 'Oggi' : days[d.getDay()];
+          
+          last5Days.push({ ...dayData, label });
+          last5Labels.push(label);
+        }
+
+        const maxVal = Math.max(...last5Days.map(d => d.total || 0), 1);
+        const normalizedData = last5Days.map(d => ({
+          desktop: Math.round(((d.desktop || 0) / maxVal) * 100),
+          mobile: Math.round(((d.mobile || 0) / maxVal) * 100),
+          total: d.total || 0,
+          label: d.label
+        }));
+
         setTrafficStats((prev: any) => ({
           ...prev,
-          totalVisits: data.today || 0, // In UI, "Visite Oggi" uses totalVisits
-          activeNow: data.live || Math.floor(Math.random() * 10) + 1, // Matches "Utenti Live" in UI
+          totalVisits: data.today || 0,
+          activeNow: data.live || Math.floor(Math.random() * 10) + 1,
           todayVisits: data.today || 0,
           totalVisitors: data.total || 0,
           averageSession: data.avgSession || '2m 14s',
-          bounceRate: data.bounceRate || '34%'
+          bounceRate: data.bounceRate || '34%',
+          chartData: normalizedData,
+          labels: last5Labels,
+          realValues: last5Days.map(d => d.total || 0)
         }));
       }
     });
@@ -907,10 +938,16 @@ export default function App() {
           }
         }
 
+        const todayKey = new Date().toISOString().split('T')[0];
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const deviceType = isMobile ? 'mobile' : 'desktop';
+
         await setDoc(trafficDoc, {
           total: increment(1),
           today: resetToday ? 1 : increment(1),
-          lastVisit: new Date().toISOString()
+          lastVisit: new Date().toISOString(),
+          [`daily.${todayKey}.total`]: increment(1),
+          [`daily.${todayKey}.${deviceType}`]: increment(1)
         }, { merge: true });
       } catch (e) {
         console.warn("Traffic tracking limited by permissions or network");
@@ -2070,8 +2107,8 @@ export default function App() {
                       <div className="bg-zinc-900/60 border border-white/10 rounded-3xl p-8 mb-12">
                         <div className="flex items-center justify-between mb-10">
                           <div>
-                            <h3 className="text-xl font-black text-white uppercase tracking-tighter">Analisi Ingressi 7gg</h3>
-                            <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mt-1">Dati storici elaborati dal db</p>
+                            <h3 className="text-xl font-black text-white uppercase tracking-tighter">Analisi Ingressi 5gg</h3>
+                            <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mt-1">Dati storici in tempo reale</p>
                           </div>
                           <div className="flex gap-2">
                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
@@ -2087,22 +2124,29 @@ export default function App() {
 
                         {/* Custom SVG Chart (Conceptual) */}
                         <div className="relative h-64 w-full flex items-end justify-between px-4 pb-4">
-                          {(trafficStats.chartData || [40, 65, 45, 90, 75, 55, 85]).map((d: any, i: number) => {
+                          {(trafficStats.chartData || [40, 65, 45, 90, 75]).map((d: any, i: number) => {
                             const desktopH = typeof d === 'object' ? d.desktop : d;
                             const mobileH = typeof d === 'object' ? d.mobile : d * 0.7;
-                            const label = typeof d === 'object' ? d.label : `D${i+1}`;
+                            const label = (trafficStats.labels && trafficStats.labels[i]) || `D${i+1}`;
+                            const realVal = (trafficStats.realValues && trafficStats.realValues[i]) || 0;
+                            
                             return (
                               <div key={i} className="flex flex-col items-center gap-4 w-12 group">
                                 <div className="relative w-4 h-48 flex items-end gap-1">
+                                  {/* Tooltip on hover */}
+                                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-2 py-1 rounded text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                    {realVal} visite
+                                  </div>
+                                  
                                   <motion.div 
                                     initial={{ height: 0 }}
-                                    animate={{ height: `${desktopH}%` }}
+                                    animate={{ height: `${mobileH}%` }}
                                     className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-full relative shadow-[0_0_10px_rgba(52,211,153,0.1)] group-hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] transition-all"
                                   />
                                   <motion.div 
                                     initial={{ height: 0 }}
-                                    animate={{ height: `${mobileH}%` }}
-                                    className="w-full bg-gradient-to-t from-neon-blue/60 to-neon-blue rounded-t-full opacity-30 absolute left-2 group-hover:opacity-60 transition-all"
+                                    animate={{ height: `${desktopH}%` }}
+                                    className="w-full bg-gradient-to-t from-neon-blue/60 to-neon-blue rounded-t-full opacity-30 absolute left-2group-hover:opacity-60 transition-all"
                                   />
                                 </div>
                                 <span className="text-[9px] font-black text-white/10 uppercase tracking-widest group-hover:text-white transition-colors">{label}</span>
