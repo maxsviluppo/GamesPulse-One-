@@ -434,15 +434,19 @@ app.get("/api/news", async (req, res) => {
         ]);
         
         // Map items with a potential secondary fetch for missing media (Gematsu specific)
-        const mappedItems = await Promise.all(feed.items.slice(0, ITEMS_PER_SOURCE).map(async (item: any) => {
+        const mappedItems = await Promise.all(feed.items.slice(0, ITEMS_PER_SOURCE).map(async (item: any, idx: number) => {
           let image = extractImage(item);
           let video = extractVideo(item);
           
-          // Enhanced recovery for Gematsu or high-value sources missing essential media
-          if ((!image || (source.name === 'Gematsu' && !video)) && source.name === 'Gematsu' && item.link) {
+          // Enhanced recovery for problematic or high-value sources (Images & Videos)
+          // Limit meta fetch to first 5 items per source to avoid massive timeouts on Vercel
+          const isPrioritySource = ['HD Blog', 'GameStar', 'VGC', 'GameSpot', 'GameSource', 'Gematsu'].includes(source.name);
+          const needsRecovery = (!image || (isPrioritySource && !video));
+          
+          if (needsRecovery && idx < 5 && item.link) { 
             const meta = await fetchMetaInfo(item.link);
-            if (!image) image = meta.image;
-            if (!video) video = meta.video;
+            if (!image || (source.name === 'HD Blog' || source.name === 'GameStar')) image = meta.image || image;
+            if (!video) video = meta.video || video;
           }
 
           return {

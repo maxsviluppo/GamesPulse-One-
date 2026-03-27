@@ -433,6 +433,8 @@ function App() {
   const [showCookieBanner, setShowCookieBanner] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [splashBg, setSplashBg] = useState('');
+  const [pendingNews, setPendingNews] = useState<NewsItem[]>([]);
+  const [showUpdateBadge, setShowUpdateBadge] = useState(false);
   
   // Admin States
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -602,6 +604,31 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, [saveStatus]);
+
+  // Handle Scroll to track current index
+  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
+    const target = e.currentTarget;
+    const scrollPos = target.scrollTop;
+    const itemHeight = target.clientHeight;
+    const newIdx = Math.round(scrollPos / itemHeight);
+    if (newIdx !== currentIndex) {
+      setCurrentIndex(newIdx);
+    }
+    if (isMenuOpen || isSearchOpen) closeOverlays(); // Keep existing overlay closing logic
+  };
+
+  // Merge pending news and scroll to top
+  const handleApplyUpdates = () => {
+    setNews(prev => [...pendingNews, ...prev]);
+    setPendingNews([]);
+    setShowUpdateBadge(false);
+    
+    // Scroll to top
+    const main = document.querySelector('main');
+    if (main) {
+      main.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
   const [isSavingAdsense, setIsSavingAdsense] = useState(false);
   const [isSavingSeo, setIsSavingSeo] = useState(false);
   const [trafficStats, setTrafficStats] = useState<any>({
@@ -739,6 +766,11 @@ function App() {
   };
 
   const filteredNews = news.filter(item => {
+    // Determine if the source is active or if it has been deleted
+    const source = newsSources.find(s => s.name === item.source);
+    // If source not found (deleted) or inactive, filter it out
+    if (!source || source.active === false) return false;
+
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.source.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || 
@@ -862,15 +894,20 @@ function App() {
         }));
 
       setNews(prevNews => {
-        // If it's a full refresh or first load, replace and handle shuffle if needed
+        // Prepare active source names for filtering
+        const activeSourceNames = new Set(newsSources.filter(s => s.active !== false).map(s => s.name));
+        
+        // Always filter the incoming result to be extra safe
+        const filteredNewRaw = categorizedData.filter((item: any) => activeSourceNames.has(item.source));
+
+        // If it's a full refresh or first load, replace and handle shuffle
         if (!isBackground) {
-          // Extra shuffle on frontend to ensure unique user experience per "restart"
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const todayT = today.getTime();
           
-          const todays = categorizedData.filter(n => new Date(n.pubDate).getTime() >= todayT);
-          const olders = categorizedData.filter(n => new Date(n.pubDate).getTime() < todayT);
+          const todays = filteredNewRaw.filter((n: any) => new Date(n.pubDate).getTime() >= todayT);
+          const olders = filteredNewRaw.filter((n: any) => new Date(n.pubDate).getTime() < todayT);
           
           // Fisher-Yates shuffle
           const shuffle = (arr: any[]) => {
@@ -884,15 +921,23 @@ function App() {
           return [...shuffle([...todays]), ...olders];
         }
 
-        // Background update: merge new items without losing current state
+        // Background update logic: Merge new items without losing current state
         const existingIds = new Set(prevNews.map(n => n.id));
-        const newOnes = categorizedData.filter(n => !existingIds.has(n.id));
+        const finalNewOnes = filteredNewRaw.filter((n: any) => !existingIds.has(n.id));
         
-        if (newOnes.length === 0) return prevNews;
-        
-        console.log(`[GamesPulse] Background fetch added ${newOnes.length} new items.`);
-        // For background, we add new ones at the top to make it feel real-time
-        return [...newOnes, ...prevNews];
+        if (finalNewOnes.length === 0) {
+           // Even if no new ones, let's filter the existing ones against active sources
+           return prevNews.filter(n => activeSourceNames.has(n.source));
+        }
+
+        // --- NEW Logic for background refresh (No Jump) ---
+        // Only prepend if user is ALREADY at the very top (currentIndex 0)
+        // Otherwise, store in a pending state or append at the bottom to avoid "Reset"
+        // Background update logic: Always buffer into pendingNews to avoid scroll jump/reset
+        setPendingNews(prev => [...finalNewOnes, ...prev]);
+        setShowUpdateBadge(true);
+        console.log(`[GamesPulse] Background fetch buffered ${finalNewOnes.length} items.`);
+        return prevNews.filter(n => activeSourceNames.has(n.source));
       });
 
       // Only reset visibility on full manual reload or initial load (not backgrounds)
@@ -942,7 +987,14 @@ function App() {
           case 'seo': setSeoConfigs((prev: any) => ({ ...prev, ...data })); break;
           case 'adsense': setAdsenseConfig(data); break;
           case 'analytics': setAnalyticsConfig(data); break;
-          case 'sources': if (data.list) setNewsSources(data.list); break;
+          case 'sources': 
+            if (data.list) {
+                setNewsSources(data.list);
+                // Dynamically filter existing news when sources change in real-time
+                const activeSourceNames = new Set(data.list.filter((s: any) => s.active !== false).map((s: any) => s.name));
+                setNews(prev => prev.filter(n => activeSourceNames.has(n.source)));
+            }
+            break;
         }
       }, (error) => {
         console.warn(`Realtime error for ${configId}:`, error);
@@ -1328,15 +1380,6 @@ function App() {
     }
   }, [selectedCategory, searchQuery]);
 
-  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
-    const target = e.currentTarget;
-    const index = Math.round(target.scrollTop / target.clientHeight);
-    if (index !== currentIndex && index >= 0 && index < filteredNews.length) {
-      setCurrentIndex(index);
-    }
-    if (isMenuOpen || isSearchOpen) closeOverlays();
-  };
-
   const currentItem = filteredNews[currentIndex];
   const isCurrentFavorite = currentItem ? favorites.includes(currentItem.id) : false;
 
@@ -1348,15 +1391,20 @@ function App() {
           <div>
             <h1 
               onClick={() => {
-                // Background fetch (silent) ensures no loading splash/reset
-                fetchNews(true, selectedCategory, true);
+                // Manual trigger: Full refresh to ensure newest content is seen
+                // Scroll to top first for immediate feedback
                 const main = document.querySelector('main');
                 if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
-                // We keep the state positions to avoid jarring reset, 
-                // but move to top as requested
+                
+                // Clear any buffered updates since we're force-refreshing anyway
+                setPendingNews([]);
+                setShowUpdateBadge(false);
                 setCurrentIndex(0);
+                
+                // Full manual refresh (force=true, isBackground=false)
+                fetchNews(true, selectedCategory, false);
               }}
-              className="text-xl md:text-2xl font-extrabold font-display tracking-tighter neon-text-blue italic drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] cursor-pointer active:scale-95 transition-all select-none"
+              className="text-xl md:text-2xl font-extrabold font-display tracking-tighter neon-text-blue italic drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] cursor-pointer active:scale-95 transition-all select-none hover:brightness-125"
             >
               GAMES<span className="animate-pulse-azure ml-1">PULSE</span>
             </h1>
@@ -1366,9 +1414,10 @@ function App() {
           </div>
           <div className="flex items-center gap-3">
             {/* Active Category Indicator (Left of Refresh) */}
-            {selectedCategory !== 'all' && !isMenuOpen && (
+            {selectedCategory !== 'all' && (
+
               <motion.button
-                initial={{ opacity: 0, x: 20, scale: 0.5 }}
+                initial={{ opacity: 0, scale: 0.5, x: -20 }}
                 animate={{ 
                   opacity: 1, 
                   x: 0,
@@ -1377,6 +1426,8 @@ function App() {
                 }}
                 onClick={() => {
                   setSelectedCategory('all');
+                  const main = document.querySelector('main');
+                  if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
                   fetchNews(false, 'all');
                 }}
                 className="w-8 h-8 rounded-xl text-white flex items-center justify-center border-2 z-50 active:scale-90 transition-transform"
@@ -1390,6 +1441,20 @@ function App() {
             )}
             
             <div className="flex items-center gap-2 md:gap-3">
+              {showUpdateBadge && pendingNews.length > 0 && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  onClick={handleApplyUpdates}
+                  className="relative p-2 rounded-full bg-neon-blue text-white shadow-lg hover:bg-blue-600 transition-all active:scale-90"
+                >
+                  <RefreshCw size={20} />
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                    {pendingNews.length}
+                  </span>
+                </motion.button>
+              )}
               <button 
                 onClick={() => currentItem && toggleFavorite(currentItem.id)}
                 className={`p-2 transition-all active:scale-90 ${isCurrentFavorite ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-white/70 hover:text-white'}`}
@@ -1781,6 +1846,22 @@ function App() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Update Available Badge */}
+      <AnimatePresence>
+        {showUpdateBadge && (
+          <motion.button
+            initial={{ y: -50, opacity: 0, scale: 0.8 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: -50, opacity: 0, scale: 0.8 }}
+            onClick={handleApplyUpdates}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-neon-blue text-black px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(0,243,255,0.4)] flex items-center gap-2 active:scale-95 transition-all"
+          >
+            <RefreshCw size={14} className="animate-spin-slow" />
+            {pendingNews.length} Nuove Notizie
+          </motion.button>
         )}
       </AnimatePresence>
 
