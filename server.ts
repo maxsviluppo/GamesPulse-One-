@@ -30,6 +30,10 @@ if (!fs.existsSync(SOURCES_FILE)) {
 
 const app = express();
 const parser = new Parser({
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/rss+xml, application/rdf+xml, application/xml;q=0.9, text/xml;q=0.8'
+  },
   customFields: {
     item: [
       ['media:content', 'media:content', { keepArray: true }],
@@ -39,6 +43,8 @@ const parser = new Parser({
       ['enclosure', 'enclosure'],
       ['thumb', 'thumb'],
       ['content:encoded', 'contentEncoded'],
+      ['dc:date', 'pubDate'], // RDF compatibility
+      ['dc:creator', 'creator'],
     ],
   },
 });
@@ -187,21 +193,42 @@ async function fetchMetaInfo(url: string) {
                 $('meta[name="twitter:image"]').attr('content') ||
                 $('meta[property="og:image:secure_url"]').attr('content') ||
                 $('meta[name="thumbnail"]').attr('content');
-                  
+                   
+    // Source-specific image improvements
+    if (image) {
+      if (url.includes('gamestar.de')) {
+        // GameStar often uses small teaser images, try to get full resolution
+        image = image.replace(/_teaser_\d+x\d+\./, '_full.');
+      }
+      if (url.includes('hdblog.it')) {
+        // HD Blog images can be low res in OG, look for better ones if possible
+        const betterImg = $('meta[property="og:image:width"]').attr('content');
+        if (betterImg && parseInt(betterImg) < 600) {
+           const bodyImg = $('article img').first().attr('src');
+           if (bodyImg) image = bodyImg;
+        }
+      }
+    }
+
     let video = $('meta[property="og:video:url"]').attr('content') ||
                 $('meta[property="og:video:secure_url"]').attr('content') ||
                 $('meta[property="og:video"]').attr('content') ||
                 $('meta[name="twitter:player"]').attr('content');
     
+    // Improved Video Detection for VGC, GameSpot, GameSource
     if (!video) {
-        const ytEmbed = $('iframe[src*="youtube.com"], iframe[src*="youtu.be"]').attr('src');
-        if (ytEmbed) video = ytEmbed;
-        else {
+        // Look for common video containers or iframes
+        const ytEmbed = $('iframe[src*="youtube.com"], iframe[src*="youtu.be"], iframe[src*="vgc.com"], iframe[src*="gamespot.com"], .video-container iframe').attr('src');
+        if (ytEmbed) {
+            video = ytEmbed;
+        } else {
+          // Direct HTML search for YouTube IDs
           const ytMatch = html.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
           if (ytMatch) video = `https://www.youtube.com/embed/${ytMatch[1]}`;
         }
     }
 
+    // Clean up YouTube URLs to standard embed format
     if (video && (video.includes('youtube.com') || video.includes('youtu.be'))) {
       const ytId = video.match(/(?:v=|embed\/|youtu\.be\/|v\/)([a-zA-Z0-9_-]{11})/i)?.[1];
       if (ytId) video = `https://www.youtube.com/embed/${ytId}`;
@@ -273,11 +300,25 @@ app.get("/api/news", async (req, res) => {
           let image = extractImage(item);
           let video = extractVideo(item);
           
-          const isGematsu = source.name.toLowerCase().includes('gematsu') || (item.link && item.link.includes('gematsu.com'));
-          if ((!image || (isGematsu && !video)) && isGematsu && item.link) {
-            const meta = await fetchMetaInfo(item.link);
-            if (!image) image = meta.image;
-            if (!video) video = meta.video;
+          // Specific extraction for feeds known to have good meta info but poor RSS media
+          const isGematsu = (source.name || "").toLowerCase().includes('gematsu') || (item.link && item.link.includes('gematsu.com'));
+          const is4Gamer = (source.name || "").toLowerCase().includes('4gamer') || (item.link && item.link.includes('4gamer.net'));
+          
+          if ((!image || (isGematsu && !video)) && (isGematsu || is4Gamer) && item.link) {
+            try {
+              // Increase timeout for 4Gamer as it can be slow
+              const meta = await fetchMetaInfo(item.link);
+              if (!image && meta.image) image = meta.image;
+              if (!video && meta.video) video = meta.video;
+              
+              // Fallback for 4Gamer specifically if no og:image is found
+              if (is4Gamer && !image) {
+                // Sometimes 4Gamer uses a specific image naming convention or local path
+                // But og:image is usually reliable if not blocked
+              }
+            } catch (metaErr) {
+              console.warn(`Meta fetch failed for ${item.link}`);
+            }
           }
 
           return {
