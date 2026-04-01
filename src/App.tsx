@@ -865,8 +865,8 @@ function App() {
         setIsSettingsOpen(false);
       } 
     },
-    { id: 'share', label: 'Condividi App', icon: <Share2 size={20} />, action: () => handleShare(true) },
-    { id: 'send', label: 'Invia ad un amico', icon: <Send size={20} />, action: () => handleSend(true) },
+    { id: 'share', label: 'Condividi', icon: <Share2 size={20} />, action: () => handleShare(false) },
+    { id: 'send', label: 'Invia App', icon: <Send size={20} />, action: () => handleSend(true) },
     { id: 'refresh', label: 'Aggiorna', icon: <RefreshCw size={20} />, action: () => fetchNews(true) },
     user ? { id: 'logout', label: 'Esci', icon: <LogOut size={20} />, action: logout } : null
   ].filter(Boolean) as any[];
@@ -931,13 +931,17 @@ function App() {
         }
 
         // --- NEW Logic for background refresh (No Jump) ---
-        // Only prepend if user is ALREADY at the very top (currentIndex 0)
-        // Otherwise, store in a pending state or append at the bottom to avoid "Reset"
         // Background update logic: Always buffer into pendingNews to avoid scroll jump/reset
-        setPendingNews(prev => [...finalNewOnes, ...prev]);
+        setPendingNews(prev => {
+          const pIds = new Set(prev.map(p => p.id));
+          const trulyNew = finalNewOnes.filter((n: any) => !pIds.has(n.id));
+          return [...trulyNew, ...prev];
+        });
         setShowUpdateBadge(true);
-        console.log(`[GamesPulse] Background fetch buffered ${finalNewOnes.length} items.`);
-        return prevNews.filter(n => activeSourceNames.has(n.source));
+        console.log(`[GamesPulse] Background fetch buffered ${finalNewOnes.length} items. Reading spot protected.`);
+        
+        // IMPORTANT: Return original reference to avoid React re-render of the entire list
+        return prevNews;
       });
 
       // Only reset visibility on full manual reload or initial load (not backgrounds)
@@ -1037,12 +1041,12 @@ function App() {
         setTrafficStats((prev: any) => ({
           ...prev,
           totalVisits: data.today || 0,
-          activeNow: data.live || Math.floor(Math.random() * 10) + 1,
+          activeNow: data.live || 1, // Start with 1 (the current user)
           todayVisits: data.today || 0,
           todayNewUsers: daily[new Date().toISOString().split('T')[0]]?.newUsers || 0,
           totalVisitors: data.total || 0,
-          averageSession: data.avgSession || '2m 14s',
-          bounceRate: data.bounceRate || '34%',
+          averageSession: data.avgSession || 'In calcolo...',
+          bounceRate: data.bounceRate || '0%',
           chartData: normalizedData,
           labels: last5Labels,
           realValues: last5Days.map(d => d.total || 0)
@@ -2352,43 +2356,49 @@ function App() {
                         </div>
                       </div>
 
-                        {/* Custom SVG Chart (Conceptual) */}
+                        {/* Custom SVG Chart */}
                         <div className="relative h-64 w-full flex items-end justify-between px-4 pb-4">
-                          {((trafficStats.chartData && trafficStats.chartData.some((d: any) => (typeof d === 'object' ? d.total : d) > 0)) ? trafficStats.chartData : [40, 65, 45, 90, 75]).map((d: any, i: number) => {
-                             const desktopH = typeof d === 'object' ? d.desktop : d;
-                             const mobileH = typeof d === 'object' ? d.mobile : d * 0.7;
-                             const newUsersH = typeof d === 'object' ? d.newUsers : d * 0.3;
-                             const label = (trafficStats.labels && trafficStats.labels[i]) || `D${i+1}`;
-                             const realVal = (trafficStats.realValues && trafficStats.realValues[i]) || 0;
-                            
-                            return (
-                              <div key={i} className="flex flex-col items-center gap-4 w-12 group">
-                                <div className="relative w-5 h-48 flex items-end gap-0.5">
-                                  {/* Tooltip on hover */}
-                                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-2 py-1 rounded text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                                    {realVal} visite
+                          {( (trafficStats.chartData || []).length > 0 ) ? (
+                            trafficStats.chartData.map((d: any, i: number) => {
+                               const desktopH = d.desktop || 2;
+                               const mobileH = d.mobile || 2;
+                               const newUsersH = d.newUsers || 2;
+                               const label = d.label || `D${i+1}`;
+                               const realVal = d.total || 0;
+                              
+                              return (
+                                <div key={i} className="flex flex-col items-center gap-4 w-12 group">
+                                  <div className="relative w-5 h-48 flex items-end gap-0.5">
+                                    {/* Tooltip on hover */}
+                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-2 py-1 rounded text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                      {realVal} visite
+                                    </div>
+                                    
+                                    <motion.div 
+                                      initial={{ height: 0 }}
+                                      animate={{ height: `${newUsersH}%` }}
+                                      className="w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-full relative shadow-[0_0_10px_rgba(251,146,60,0.1)] group-hover:shadow-[0_0_20px_rgba(251,146,60,0.3)] transition-all"
+                                    />
+                                    <motion.div 
+                                      initial={{ height: 0 }}
+                                      animate={{ height: `${mobileH}%` }}
+                                      className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-full relative shadow-[0_0_10px_rgba(52,211,153,0.1)] group-hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] transition-all"
+                                    />
+                                    <motion.div 
+                                      initial={{ height: 0 }}
+                                      animate={{ height: `${desktopH}%` }}
+                                      className="w-full bg-gradient-to-t from-neon-blue/60 to-neon-blue rounded-t-full relative shadow-[0_0_10px_rgba(0,243,255,0.1)] group-hover:shadow-[0_0_20px_rgba(0,243,255,0.3)] transition-all"
+                                    />
                                   </div>
-                                  
-                                  <motion.div 
-                                    initial={{ height: 0 }}
-                                    animate={{ height: `${newUsersH}%` }}
-                                    className="w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-full relative shadow-[0_0_10px_rgba(251,146,60,0.1)] group-hover:shadow-[0_0_20px_rgba(251,146,60,0.3)] transition-all"
-                                  />
-                                  <motion.div 
-                                    initial={{ height: 0 }}
-                                    animate={{ height: `${mobileH}%` }}
-                                    className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-full relative shadow-[0_0_10px_rgba(52,211,153,0.1)] group-hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] transition-all"
-                                  />
-                                  <motion.div 
-                                    initial={{ height: 0 }}
-                                    animate={{ height: `${desktopH}%` }}
-                                    className="w-full bg-gradient-to-t from-neon-blue/60 to-neon-blue rounded-t-full relative shadow-[0_0_10px_rgba(0,243,255,0.1)] group-hover:shadow-[0_0_20px_rgba(0,243,255,0.3)] transition-all"
-                                  />
+                                  <span className="text-[9px] font-black text-white/10 uppercase tracking-widest group-hover:text-white transition-colors">{label}</span>
                                 </div>
-                                <span className="text-[9px] font-black text-white/10 uppercase tracking-widest group-hover:text-white transition-colors">{label}</span>
-                              </div>
-                            );
-                          })}
+                              );
+                            })
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-white/5 uppercase font-black text-[10px] tracking-[0.4em]">In attesa di dati reali...</span>
+                            </div>
+                          )}
                           
                           {/* Y-Axis labels */}
                           <div className="absolute left-0 h-full flex flex-col justify-between text-[8px] font-black text-white/[0.05] py-4 pointer-events-none">
