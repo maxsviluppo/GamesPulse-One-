@@ -302,21 +302,12 @@ app.get("/api/news", async (req, res) => {
           
           // Specific extraction for feeds known to have good meta info but poor RSS media
           const isGematsu = (source.name || "").toLowerCase().includes('gematsu') || (item.link && item.link.includes('gematsu.com'));
-          const is4Gamer = (source.name || "").toLowerCase().includes('4gamer') || (item.link && item.link.includes('4gamer.net'));
           
-          if ((!image || (isGematsu && !video)) && (isGematsu || is4Gamer) && item.link) {
-            try {
-              // Increase timeout for 4Gamer as it can be slow
+          if ((!image || (isGematsu && !video)) && isGematsu && item.link) {
+              // Gematsu usually has og:image or high-res in content
               const meta = await fetchMetaInfo(item.link);
               if (!image && meta.image) image = meta.image;
               if (!video && meta.video) video = meta.video;
-              
-              // Fallback for 4Gamer specifically if no og:image is found
-              if (is4Gamer && !image) {
-                // Sometimes 4Gamer uses a specific image naming convention or local path
-                // But og:image is usually reliable if not blocked
-              }
-            } catch (metaErr) {
               console.warn(`Meta fetch failed for ${item.link}`);
             }
           }

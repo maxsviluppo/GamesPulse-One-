@@ -128,7 +128,6 @@ function loadSources() {
     { "id": "gp-019b", "url": "https://www.macrumors.com/roundup/apple-arcade/feed/", "cat": "Mobile", "name": "MacRumors Arcade", "active": true },
     // JAPAN
     { "id": "gp-jp-1", "url": "https://www.famitsu.com/rss/nintendo.xml", "cat": "Switch", "name": "Famitsu", "active": true },
-    { "id": "gp-jp-2", "url": "https://www.4gamer.net/rss/index.xml", "cat": "News", "name": "4Gamer.net", "active": true },
     { "id": "gp-jp-3", "url": "https://www.inside-games.jp/rss/nintendo/", "cat": "Switch", "name": "Nintendo Inside", "active": true },
     // CHINA
     { "id": "gp-cn-1", "url": "http://www.a9vg.com/rss/news/", "cat": "PS5", "name": "A9VG", "active": true },
