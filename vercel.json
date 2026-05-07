@@ -1,12 +1,7 @@
 {
   "version": 2,
-  "functions": {
-    "api/*.ts": {
-      "includeFiles": ".data/**"
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.ts" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api|ads\\.txt|robots\\.txt|sitemap\\.xml|favicon\\.png|manifest\\.json).*)", "destination": "/index.html" }
   ]
 }

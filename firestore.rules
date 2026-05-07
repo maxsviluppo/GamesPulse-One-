@@ -64,18 +64,5 @@ service cloud.firestore {
                       (!('role' in request.resource.data) || request.resource.data.role == resource.data.role || isAdmin());
       allow delete: if isAdmin();
     }
-
-    // Configurazione Globale Admin - Sblocco Totale per Risoluzione Errore
-    match /admin_configs/{configId} {
-      allow read, write: if true;
-    }
-    
-    match /traffic/{docId} {
-      allow read, write: if true;
-    }
-    
-    match /adsense/{docId} {
-      allow read, write: if true;
-    }
   }
 }
