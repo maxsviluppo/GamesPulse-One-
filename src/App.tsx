@@ -169,6 +169,30 @@ const NEON_COLORS = [
   'neon-border-purple hover:shadow-[0_0_40px_rgba(188,19,254,0.8)]',
 ];
 
+// AdSense Component
+const AdUnit = ({ slot }: { slot?: string }) => {
+  useEffect(() => {
+    try {
+      // @ts-ignore
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {
+      console.error('AdSense error:', e);
+    }
+  }, []);
+
+  return (
+    <div className="w-full my-6 bg-black/40 border border-white/10 rounded-2xl overflow-hidden flex flex-col items-center justify-center p-4 min-h-[250px]">
+      <span className="text-[10px] text-white/30 uppercase tracking-widest mb-4">Advertisement</span>
+      <ins className="adsbygoogle"
+           style={{ display: 'block' }}
+           data-ad-client="ca-pub-1385801472165821"
+           data-ad-slot={slot || "default"}
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>
+  );
+};
+
 const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: { 
   item: NewsItem; 
   index: number; 
@@ -854,25 +878,33 @@ export default function App() {
             {filteredNews.length > 0 ? (
               <>
                 {filteredNews.slice(0, visibleCount).map((item: NewsItem, index: number) => (
-                  <div 
-                    key={item.id} 
-                    ref={index === visibleCount - 1 ? lastItemRef : null}
-                    className="h-full w-full snap-start flex-shrink-0 perspective-1000 relative"
-                  >
-                    <NewsCard 
-                      item={item} 
-                      index={index} 
-                      onInteraction={closeOverlays}
-                      isFavorite={favorites.includes(item.id)}
-                      onToggleFavorite={() => toggleFavorite(item.id)}
-                    />
-                    {/* Instruction Text */}
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-                      <p className="text-[10px] font-bold tracking-[0.2em] text-zinc-600 uppercase whitespace-nowrap">
-                        Premi l'immagine per vedere il sito
-                      </p>
+                  <React.Fragment key={item.id}>
+                    <div 
+                      ref={index === visibleCount - 1 ? lastItemRef : null}
+                      className="h-full w-full snap-start flex-shrink-0 perspective-1000 relative"
+                    >
+                      <NewsCard 
+                        item={item} 
+                        index={index} 
+                        onInteraction={closeOverlays}
+                        isFavorite={favorites.includes(item.id)}
+                        onToggleFavorite={() => toggleFavorite(item.id)}
+                      />
+                      {/* Instruction Text */}
+                      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                        <p className="text-[10px] font-bold tracking-[0.2em] text-zinc-600 uppercase whitespace-nowrap">
+                          Premi l'immagine per vedere il sito
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                    {/* Insert Ad every 10 items as a separate snap slide */}
+                    {(index + 1) % 10 === 0 && (
+                      <div className="h-full w-full snap-start flex-shrink-0 flex flex-col items-center justify-center p-4 bg-zinc-950">
+                        <AdUnit />
+                        <p className="text-[10px] font-bold tracking-[0.3em] text-zinc-700 uppercase mt-4">Scorri per continuare</p>
+                      </div>
+                    )}
+                  </React.Fragment>
                 ))}
                 {visibleCount < filteredNews.length && (
                   <div className="h-32 w-full flex flex-col items-center justify-center snap-start bg-black/50 backdrop-blur-sm border-t border-white/5">

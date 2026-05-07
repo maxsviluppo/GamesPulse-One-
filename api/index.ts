@@ -3,10 +3,10 @@ import path from "path";
 import Parser from "rss-parser";
 import cors from "cors";
 import * as cheerio from "cheerio";
-import { GoogleGenerativeAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 const API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCmeDN-_CqIzf51S4aJyHEt_lnah2KFYRk";
-const genAI = new GoogleGenerativeAI(API_KEY);
+const genAI = new GoogleGenAI({ apiKey: API_KEY });
 
 // Import vite only if needed (locally) to avoid large serverless bundles
 let createViteServer: any;
@@ -205,14 +205,19 @@ async function fetchMetaInfo(url: string) {
 async function generateSummary(title: string, content: string) {
   if (!genAI) return null;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
     const prompt = `You are a pro gaming journalist. Summarize this gaming news in one punchy, exciting sentence (max 30 words) in Italian.
     Title: ${title}
     Content: ${content}
     Summary:`;
     
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-lite-preview-02-05",
+      contents: [{ role: "user", parts: [{ text: prompt }] }]
+    });
+    
+    // In @google/genai, the response has a helper .text property or candidates array
+    // @ts-ignore
+    return result.text || result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
   } catch (e) {
     console.error("AI Summary error:", e);
     return null;
@@ -263,7 +268,7 @@ app.get("/api/news", async (req, res) => {
   try {
     const feedPromises = Object.entries(FEEDS).map(async ([source, url]) => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased to 8s
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // Increased to 12s for Vercel
 
       try {
         const response = await fetch(url, {
@@ -359,47 +364,57 @@ app.get("/api/news", async (req, res) => {
     });
     
     const slicedNews = allNews.slice(0, 500);
-
-    // ONLINE ON VERCEL: Disable slow metadata enhancement to prevent 504 Gateway Timeout (10s limit)
     const isVercel = process.env.VERCEL === '1';
-    if (isVercel) {
-      // Just return what we have quickly
-      newsCache = slicedNews;
-      lastFetchTime = Date.now();
-      return res.json(slicedNews);
-    }
-
-    // Local only deep enhancement
-    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video).slice(0, 100);
-    if (newsToEnhance.length > 0) {
-      await Promise.all(newsToEnhance.map(async (item) => {
-        const meta = await fetchMetaInfo(item.link);
-        if (meta.image && !item.image) {
-          item.image = meta.image;
-        }
-        if (meta.video && !item.video) {
-          item.video = meta.video;
-        }
-        
-        // Add AI Summary to create unique content value
-        if (genAI && !item.aiSummary) {
-          item.aiSummary = await generateSummary(item.title, item.content);
-        }
-        
-        // Final fallback for images if still null
-        if (!item.image) {
-          const keywords = ['gaming', 'videogames', 'console', 'ps5', 'xbox', 'nintendo'];
-          const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
-          item.image = `https://picsum.photos/seed/${encodeURIComponent(item.title.substring(0, 10))}/800/450`;
-        }
-      }));
-    }
+    const newsToEnhance = slicedNews.filter(item => !item.image || !item.video || !item.aiSummary).slice(0, isVercel ? 5 : 20);
 
     newsCache = slicedNews;
     lastFetchTime = Date.now();
     res.json(slicedNews);
+
+    // Background enhancement to avoid blocking the request and hitting rate limits
+    (async () => {
+      console.log(`Starting background enhancement for ${newsToEnhance.length} items...`);
+      for (const item of newsToEnhance) {
+        try {
+          // Metadata enhancement
+          if (!item.image || !item.video) {
+            const meta = await fetchMetaInfo(item.link);
+            if (meta.image && !item.image) item.image = meta.image;
+            if (meta.video && !item.video) item.video = meta.video;
+          }
+          
+          // AI Summary enhancement
+          if (genAI && !item.aiSummary) {
+            const prompt = `You are a pro gaming journalist. Summarize this gaming news in one punchy, exciting sentence (max 30 words) in Italian.
+            Title: ${item.title}
+            Content: ${item.content}
+            Summary:`;
+            
+            const result = await genAI.models.generateContent({
+              model: "gemini-2.0-flash",
+              contents: [{ role: "user", parts: [{ text: prompt }] }]
+            });
+            
+            // @ts-ignore
+            item.aiSummary = result.text || result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+          }
+          
+          // Final fallback for images
+          if (!item.image) {
+            item.image = `https://picsum.photos/seed/${encodeURIComponent(item.title.substring(0, 10))}/800/450`;
+          }
+          
+          // Small delay to be kind to the API rate limits
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (enhanceError) {
+          console.error("Background enhancement error for item:", item.title, enhanceError);
+        }
+      }
+      console.log("Background enhancement complete.");
+    })().catch(err => console.error("Background enhancement task failed:", err));
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch news" });
+    console.error("Critical API Error:", error);
+    res.status(500).json({ error: "Failed to fetch news", details: error instanceof Error ? error.message : String(error) });
   }
 });
 
