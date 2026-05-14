@@ -261,7 +261,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             {item.video.includes('embed') ? (
               <iframe
                 src={`${item.video}?autoplay=1&mute=1&loop=1&playlist=${(item.video.split('/').pop() || '').split('?')[0]}&controls=0&showinfo=0&rel=0&modestbranding=1`}
-                className="w-full h-full scale-[1.5] pointer-events-none brightness-[1.3] contrast-[1.1]"
+                className="w-full h-full scale-[1.5] pointer-events-none"
                 allow="autoplay; encrypted-media"
                 title={item.title}
                 onError={() => setVideoError(true)}
@@ -273,31 +273,31 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
                 muted
                 loop
                 playsInline
-                className="w-full h-full object-cover brightness-[1.3] contrast-[1.1]"
+                className="w-full h-full object-cover"
                 onError={() => setVideoError(true)}
               />
             )}
             <div className="absolute inset-0 bg-transparent"></div>
             {/* Vignette Effect - Reduced for videos */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.3)_100%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.2)_100%)]"></div>
             {/* Multi-layered gradient for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/95"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
           </div>
         ) : (item.image && !imageError) ? (
           <div className="absolute top-0 left-0 right-0 bottom-[180px] overflow-hidden">
             <img 
               src={item.image} 
               alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100 brightness-125"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-100"
               referrerPolicy="no-referrer"
               onError={() => setImageError(true)}
             />
             {/* Vignette Effect */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_30%,_rgba(0,0,0,0.5)_100%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_30%,_rgba(0,0,0,0.3)_100%)]"></div>
             {/* Multi-layered gradient for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/95"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
           </div>
         ) : (
           <div className="absolute top-0 left-0 right-0 bottom-[180px] bg-zinc-900/80">
@@ -506,6 +506,9 @@ export default function App() {
   };
 
   const filteredNews = news.filter(item => {
+    const hasMedia = !!item.video || (!!item.image && item.image.trim() !== '');
+    if (!hasMedia) return false;
+
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.source.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || 
@@ -653,6 +656,79 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-hidden relative">
+      {/* Luminous spinning logo overlay at app startup */}
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden bg-black"
+          >
+            {/* Background with slight image blur */}
+            <motion.div 
+              initial={{ scale: 1.1 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 4, ease: "linear" }}
+              className="absolute inset-0 z-0"
+            >
+              {splashBg && (
+                <img 
+                  src={splashBg} 
+                  alt="Splash Background" 
+                  className="w-full h-full object-cover brightness-[0.2] blur-xl"
+                  referrerPolicy="no-referrer"
+                />
+              )}
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+            </motion.div>
+
+            {/* Content Container */}
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <motion.p 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="text-neon-blue uppercase tracking-[0.5em] text-[10px] font-black mb-8 drop-shadow-[0_0_15px_rgba(0,243,255,0.5)]"
+              >
+                Inizializzazione Sistema
+              </motion.p>
+              
+              {/* Luminous spinning logo */}
+              <motion.div
+                animate={{ rotateY: [0, 360] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                style={{ transformStyle: 'preserve-3d' }}
+                className="relative my-4"
+              >
+                <img 
+                  src="/logocompleto.png" 
+                  alt="GamesPulse Logo" 
+                  className="w-64 md:w-80 h-auto drop-shadow-[0_0_40px_rgba(0,243,255,0.8)]"
+                  referrerPolicy="no-referrer"
+                />
+              </motion.div>
+
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: 120 }}
+                transition={{ delay: 0.5, duration: 1.5, ease: "easeInOut" }}
+                className="h-[2px] bg-neon-blue/40 shadow-[0_0_15px_rgba(0,243,255,0.8)] mt-12 mb-4 rounded-full"
+              />
+              
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1, duration: 0.5 }}
+                className="text-white/40 text-[9px] uppercase tracking-widest animate-pulse font-bold"
+              >
+                Sincronizzazione Dati & Media Intel...
+              </motion.p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header - Integrated Top Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-black/1 backdrop-blur-xl border-b border-white/10 px-6 py-4">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
@@ -866,9 +942,10 @@ export default function App() {
               <motion.img 
                 src="/logocompleto.png" 
                 alt="GamesPulse Logo" 
-                className="w-48 drop-shadow-[0_0_20px_rgba(0,194,255,0.4)]"
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
+                className="w-48 drop-shadow-[0_0_30px_rgba(0,243,255,0.8)]"
+                animate={{ rotateY: [0, 360] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                style={{ transformStyle: 'preserve-3d' }}
               />
               <span className="text-neon-blue font-bold uppercase tracking-[0.3em] text-[10px] animate-pulse">Syncing Intel...</span>
             </div>
