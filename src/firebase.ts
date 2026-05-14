@@ -83,8 +83,20 @@ export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
-  } catch (error) {
-    console.error("Error signing in with Google:", error);
+  } catch (error: any) {
+    console.error("Error signing in Google:", error);
+    if (error?.code === 'auth/unauthorized-domain' || String(error).includes('unauthorized-domain')) {
+      alert(
+        "⚠️ Accesso bloccato da Firebase (auth/unauthorized-domain).\n\n" +
+        "Per consentire il login da questo dominio locale o Vercel:\n" +
+        "1. Apri la Console di Firebase (progetto: gen-lang-client-0273823957)\n" +
+        "2. Vai su 'Authentication' -> scheda 'Settings' (Impostazioni) -> 'Authorized domains' (Domini autorizzati)\n" +
+        "3. Clicca su 'Add domain' e inserisci 'localhost' (oppure l'URL di Vercel senza https://)\n\n" +
+        "Una volta aggiunto, l'accesso con Google funzionerà immediatamente!"
+      );
+    } else {
+      alert(`Errore di accesso: ${error?.message || String(error)}`);
+    }
     throw error;
   }
 };
