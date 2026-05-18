@@ -1,4 +1,6 @@
 import type { MetadataRoute } from 'next';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://www.gamespulse.it";
@@ -10,6 +12,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: today,
       changeFrequency: 'always',
       priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/about`,
+      lastModified: today,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/contacts`,
+      lastModified: today,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: today,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/cookie`,
+      lastModified: today,
+      changeFrequency: 'monthly',
+      priority: 0.5,
     },
   ];
 
@@ -23,10 +49,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
+  // 1. Query Exclusive Editorials from Firestore
   try {
-    // Tentativo di lettura in tempo reale dall'API loopback per popolare i singoli permalink dinamici
+    const editorialsCol = collection(db, 'editorials');
+    const snap = await getDocs(editorialsCol);
+    snap.forEach(doc => {
+      const data = doc.data();
+      if (data && data.slug) {
+        routes.push({
+          url: `${baseUrl}/article/${data.slug}`,
+          lastModified: data.pubDate ? new Date(data.pubDate) : today,
+          changeFrequency: 'weekly',
+          priority: 0.9,
+        });
+      }
+    });
+  } catch (firestoreErr) {
+    console.error("Error populating editorials in sitemap:", firestoreErr);
+  }
+
+  // 2. Query RSS News Feed for dynamic crawlers
+  try {
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-    const host = process.env.VERCEL_URL || 'localhost:3000';
+    const host = process.env.VERCEL_URL || 'localhost:3015'; // Match port 3015
     const res = await fetch(`${protocol}://${host}/api/news`, { cache: 'no-store' });
     if (res.ok) {
       const news = await res.json();
@@ -34,17 +79,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         for (const item of news) {
           if (item && item.slug) {
             routes.push({
-              url: `${baseUrl}/?article=${encodeURIComponent(item.slug)}`,
+              url: `${baseUrl}/article/${item.slug}`,
               lastModified: item.pubDate ? new Date(item.pubDate) : today,
               changeFrequency: 'daily',
-              priority: 0.9,
+              priority: 0.8,
             });
           }
         }
       }
     }
   } catch (e) {
-    // Fallback sicuro durante la fase di build o in assenza di rete locale
+    // Silent fallback
   }
 
   return routes;

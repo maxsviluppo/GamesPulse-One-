@@ -53,7 +53,13 @@ import {
   getDoc, 
   setDoc, 
   updateDoc, 
-  onSnapshot 
+  onSnapshot,
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  query,
+  orderBy
 } from 'firebase/firestore';
 
 interface NewsItem {
@@ -258,7 +264,11 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
       {/* Front Side */}
       <div 
         style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'translateZ(1px)', pointerEvents: isFlipped ? 'none' : 'auto' }}
-        className={`absolute inset-0 group bg-zinc-950 overflow-hidden transition-all duration-500 flex flex-col cursor-pointer hover:scale-[1.01] z-10 ${NEON_COLORS[index % NEON_COLORS.length]}`}
+        className={`absolute inset-0 group bg-zinc-950 overflow-hidden transition-all duration-500 flex flex-col cursor-pointer hover:scale-[1.01] z-10 ${
+          item.isEditorial 
+            ? 'border-2 border-amber-400/50 shadow-[inset_0_0_30px_rgba(245,158,11,0.15)] hover:shadow-[0_0_40px_rgba(245,158,11,0.5)]' 
+            : NEON_COLORS[index % NEON_COLORS.length]
+        }`}
         onClick={handleFlip}
       >
         {/* Full Screen Background Image or Video */}
@@ -284,9 +294,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               />
             )}
             <div className="absolute inset-0 bg-transparent"></div>
-            {/* Vignette Effect - Reduced for videos */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.2)_100%)]"></div>
-            {/* Multi-layered gradient for better text readability */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70"></div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
           </div>
@@ -299,9 +307,7 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
               referrerPolicy="no-referrer"
               onError={() => setImageError(true)}
             />
-            {/* Vignette Effect */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_30%,_rgba(0,0,0,0.3)_100%)]"></div>
-            {/* Multi-layered gradient for better text readability */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70"></div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
           </div>
@@ -318,22 +324,32 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
             <span className="text-[12px] font-bold text-white/60">
               {new Date(item.pubDate).toLocaleDateString()}
             </span>
-            <span className="px-3 py-1 bg-neon-blue/20 backdrop-blur-md border border-neon-blue/30 rounded-full text-[9px] font-bold tracking-widest uppercase text-neon-blue">
-              {item.source}
+            <span className={`px-3 py-1 backdrop-blur-md border rounded-full text-[9px] font-black tracking-widest uppercase ${
+              item.isEditorial 
+                ? 'bg-amber-500/25 border-amber-400/50 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse' 
+                : 'bg-neon-blue/20 border-neon-blue/30 text-neon-blue'
+            }`}>
+              {item.isEditorial ? 'ESCLUSIVO' : item.source}
             </span>
           </div>
-
+ 
           <div 
             className="overflow-y-auto custom-scrollbar pr-4 mb-8 max-h-[75vh] mt-[25px]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-[24px] md:text-[54px] font-bold leading-[1] mb-6 group-hover:text-neon-blue transition-colors tracking-tighter drop-shadow-[0_4px_15px_rgba(0,0,0,0.9)]">
+            <h3 className={`text-[24px] md:text-[54px] font-bold leading-[1] mb-6 transition-colors tracking-tighter drop-shadow-[0_4px_15px_rgba(0,0,0,0.9)] ${
+              item.isEditorial ? 'group-hover:text-amber-300' : 'group-hover:text-neon-blue'
+            }`}>
               {item.title}
             </h3>
             
             {item.aiSummary && (
-              <div className="mb-6 p-4 bg-neon-blue/10 border-l-4 border-neon-blue rounded-r-lg backdrop-blur-sm">
-                <p className="text-[14px] md:text-[20px] font-bold text-neon-blue italic leading-tight">
+              <div className={`mb-6 p-4 border-l-4 rounded-r-lg backdrop-blur-sm ${
+                item.isEditorial ? 'bg-amber-500/10 border-amber-400' : 'bg-neon-blue/10 border-neon-blue'
+              }`}>
+                <p className={`text-[14px] md:text-[20px] font-bold italic leading-tight ${
+                  item.isEditorial ? 'text-amber-300' : 'text-neon-blue'
+                }`}>
                   <span className="text-[10px] uppercase tracking-widest block mb-1 opacity-70">Quick AI Intel:</span>
                   "{item.aiSummary}"
                 </p>
@@ -346,29 +362,88 @@ const NewsCard = ({ item, index, onInteraction, isFavorite, onToggleFavorite }: 
           </div>
         </div>
       </div>
-
+ 
       {/* Back Side (The Article) */}
       <div 
         style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg) translateZ(1px)', pointerEvents: isFlipped ? 'auto' : 'none' }}
-        className="absolute inset-0 bg-white overflow-hidden flex flex-col shadow-2xl"
+        className={`absolute inset-0 overflow-hidden flex flex-col shadow-2xl ${
+          item.isEditorial ? 'bg-zinc-950 text-white' : 'bg-white text-black'
+        }`}
       >
-        {/* Minimal Close Button - Positioned at the bottom right */}
+        {/* Minimal Close Button */}
         <button 
           onClick={handleFlip}
           className="absolute bottom-[42px] right-8 z-30 p-3.5 rounded-full bg-black/80 text-white backdrop-blur-xl hover:bg-red-500 transition-all active:scale-90 shadow-2xl border border-white/20"
         >
           <X size={23} />
         </button>
-
+ 
         <div className="flex-1 relative w-full h-full overflow-y-auto">
           {isFlipped && (
-            <iframe 
-              src={`/api/proxy?url=${encodeURIComponent(item.link)}`} 
-              className="w-full h-full border-none"
-              title={item.title}
-              loading="lazy"
-              style={{ overflow: 'auto' }}
-            />
+            item.isEditorial ? (
+              <div className="max-w-3xl mx-auto px-6 py-12 md:py-24 space-y-6 pt-4 pb-28 custom-scrollbar">
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 bg-amber-500/20 border border-amber-400 rounded-full text-[9px] font-black tracking-widest uppercase text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                    ESCLUSIVO GAMESPULSE
+                  </span>
+                  <span className="text-xs text-zinc-500 font-bold">
+                    {new Date(item.pubDate).toLocaleDateString("it-IT", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric"
+                    })}
+                  </span>
+                </div>
+                
+                <h2 className="text-2xl md:text-5xl font-black leading-[1.1] text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-100 to-zinc-400 tracking-tight">
+                  {item.title}
+                </h2>
+ 
+                {item.image && (
+                  <div className="w-full aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-2xl my-6">
+                    <img src={item.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                )}
+ 
+                {item.aiSummary && (
+                  <div className="p-5 bg-amber-500/5 border-l-4 border-amber-400 rounded-r-3xl my-6">
+                    <p className="text-sm md:text-base font-bold text-amber-300 italic">
+                      "{item.aiSummary}"
+                    </p>
+                  </div>
+                )}
+ 
+                {/* Styled Markdown content */}
+                <div className="text-zinc-300 text-sm md:text-lg leading-relaxed space-y-6 font-medium whitespace-pre-line">
+                  {item.content}
+                </div>
+                
+                {/* Google AdSense Blocco Annuncio inside content */}
+                <div className="w-full py-8 border-t border-b border-white/5 my-8 flex flex-col items-center">
+                  <span className="text-[9px] font-bold tracking-[0.2em] text-zinc-600 uppercase mb-4">Annuncio Pubblicitario</span>
+                  <ins className="adsbygoogle"
+                       style={{ display: "block", textAlign: "center" }}
+                       data-ad-layout="in-article"
+                       data-ad-format="fluid"
+                       data-ad-client="ca-pub-1385801472165821"
+                       data-ad-slot="default"></ins>
+                </div>
+ 
+                <div className="pt-8 border-t border-white/5 text-center">
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.25em]">
+                    Autore: Castro Massimo • Redazione GamesPulse IT
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <iframe 
+                src={`/api/proxy?url=${encodeURIComponent(item.link)}`} 
+                className="w-full h-full border-none bg-white"
+                title={item.title}
+                loading="lazy"
+                style={{ overflow: 'auto' }}
+              />
+            )
           )}
         </div>
       </div>
@@ -400,7 +475,18 @@ export default function App() {
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminError, setAdminError] = useState('');
-  const [adminTab, setAdminTab] = useState<'stats' | 'sources'>('stats');
+  const [adminTab, setAdminTab] = useState<'stats' | 'sources' | 'editorial'>('stats');
+  
+  // States for Editorial CMS
+  const [showNewEditorialForm, setShowNewEditorialForm] = useState(false);
+  const [editorialTitle, setEditorialTitle] = useState('');
+  const [editorialContent, setEditorialContent] = useState('');
+  const [editorialCategory, setEditorialCategory] = useState('playstation');
+  const [editorialImage, setEditorialImage] = useState('');
+  const [editorialAiSummary, setEditorialAiSummary] = useState('');
+  const [selectedRssForEditorial, setSelectedRssForEditorial] = useState('');
+  const [isGeneratingEditorial, setIsGeneratingEditorial] = useState(false);
+  const [isPublishingEditorial, setIsPublishingEditorial] = useState(false);
   const [activeSources, setActiveSources] = useState<Record<string, boolean>>({
     MULTIPLAYER: true,
     EVERYEYE: true,
@@ -683,23 +769,148 @@ export default function App() {
     setLoading(true);
     try {
       const response = await fetch(`/api/news${force ? '?refresh=true' : ''}`);
-      const data = await response.json();
+      const rssData = await response.json();
       
-      if (!Array.isArray(data)) {
-        console.error('Invalid news data format:', data);
-        setNews([]);
-        return;
+      let categorizedData: NewsItem[] = [];
+      if (Array.isArray(rssData)) {
+        categorizedData = rssData.map((item: NewsItem) => ({
+          ...item,
+          category: getCategory(item)
+        }));
       }
-      
-      const categorizedData = data.map((item: NewsItem) => ({
-        ...item,
-        category: getCategory(item)
-      }));
-      setNews(categorizedData);
+
+      // Fetch Editoriale articles from Firestore
+      try {
+        const editorialsCol = collection(db, 'editorials');
+        const q = query(editorialsCol, orderBy('pubDate', 'desc'));
+        const snap = await getDocs(q);
+        const editorialsData = snap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            title: data.title || '',
+            link: `/article/${data.slug}`,
+            pubDate: data.pubDate || new Date().toISOString(),
+            content: data.content || '',
+            source: 'EDITORIALE',
+            image: data.image || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800',
+            aiSummary: data.aiSummary || '',
+            slug: data.slug || '',
+            category: data.category || 'all',
+            isEditorial: true
+          } as NewsItem;
+        });
+
+        // Prepend editorials so they are featured at the very top of the feed!
+        setNews([...editorialsData, ...categorizedData]);
+      } catch (firestoreErr) {
+        console.error("Error fetching editorials from Firestore:", firestoreErr);
+        setNews(categorizedData);
+      }
     } catch (error) {
       console.error('Error fetching news:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateEditorial = async () => {
+    if (!selectedRssForEditorial) {
+      alert("Seleziona prima una notizia RSS di partenza!");
+      return;
+    }
+    const selectedItem = news.find(item => item.id === selectedRssForEditorial);
+    if (!selectedItem) {
+      alert("Notizia non trovata!");
+      return;
+    }
+
+    setIsGeneratingEditorial(true);
+    try {
+      const response = await fetch('/api/generate-editorial', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: selectedItem.title,
+          source: selectedItem.source,
+          content: selectedItem.content
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.content) {
+        setEditorialTitle(`EDITORIALE: ${selectedItem.title}`);
+        setEditorialContent(data.content);
+        setEditorialAiSummary(data.aiSummary || '');
+        if (selectedItem.image) {
+          setEditorialImage(selectedItem.image);
+        }
+      } else {
+        alert("Errore nella generazione dell'editoriale: " + (data.error || "Errore sconosciuto"));
+      }
+    } catch (e: any) {
+      alert("Errore di rete: " + e.message);
+    } finally {
+      setIsGeneratingEditorial(false);
+    }
+  };
+
+  const handlePublishEditorial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editorialTitle.trim() || !editorialContent.trim()) {
+      alert("Titolo e Contenuto sono obbligatori!");
+      return;
+    }
+
+    setIsPublishingEditorial(true);
+    try {
+      const slug = editorialTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
+      await addDoc(collection(db, 'editorials'), {
+        title: editorialTitle,
+        content: editorialContent,
+        category: editorialCategory,
+        image: editorialImage.trim() || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800',
+        aiSummary: editorialAiSummary,
+        slug: slug,
+        pubDate: new Date().toISOString()
+      });
+
+      // Clear Form and reset state
+      setEditorialTitle('');
+      setEditorialContent('');
+      setEditorialCategory('playstation');
+      setEditorialImage('');
+      setEditorialAiSummary('');
+      setSelectedRssForEditorial('');
+      setShowNewEditorialForm(false);
+      
+      // Reload main feed
+      await fetchNews();
+      alert("Editoriale originale pubblicato con successo!");
+    } catch (err: any) {
+      alert("Errore durante la pubblicazione: " + err.message);
+    } finally {
+      setIsPublishingEditorial(false);
+    }
+  };
+
+  const handleDeleteEditorial = async (id: string) => {
+    if (!window.confirm("Sei sicuro di voler eliminare definitivamente questo editoriale?")) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'editorials', id));
+      await fetchNews();
+      alert("Editoriale eliminato con successo!");
+    } catch (err: any) {
+      alert("Errore durante l'eliminazione: " + err.message);
     }
   };
 
@@ -1419,6 +1630,13 @@ export default function App() {
                   <Database size={14} />
                   Fonti Feed RSS
                 </button>
+                <button 
+                  onClick={() => setAdminTab('editorial')}
+                  className={`py-4 px-4 text-xs font-bold uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 ${adminTab === 'editorial' ? 'border-neon-blue text-neon-blue' : 'border-transparent text-white/40 hover:text-white/60'}`}
+                >
+                  <Brain size={14} />
+                  Editoriali & IA
+                </button>
               </div>
 
               {/* Content Body */}
@@ -1436,7 +1654,7 @@ export default function App() {
                         <Activity className="absolute right-3 bottom-3 w-12 h-12 text-white/5 pointer-events-none" />
                       </div>
                       <div className="bg-zinc-900/50 border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-                        <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1">Visite Mensili</p>
+                        <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1">Visite Mese</p>
                         <p className="text-3xl font-black text-neon-blue">{realTraffic.monthlyVisits.toLocaleString()}</p>
                         <p className="mt-2 text-white/30 text-[10px]">Pagine viste: {realTraffic.pageviews.toLocaleString()}</p>
                         <Database className="absolute right-3 bottom-3 w-12 h-12 text-neon-blue/5 pointer-events-none" />
@@ -1465,7 +1683,7 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                ) : (
+                ) : adminTab === 'sources' ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1474,7 +1692,6 @@ export default function App() {
                       </div>
                       <button 
                         onClick={() => {
-                          // Imposta tutte su ON
                           const allOn: Record<string, boolean> = {};
                           Object.keys(activeSources).forEach(k => allOn[k] = true);
                           setActiveSources(allOn);
@@ -1532,6 +1749,208 @@ export default function App() {
                         );
                       })}
                     </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {showNewEditorialForm ? (
+                      <form onSubmit={handlePublishEditorial} className="space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                          <h5 className="text-xs font-bold text-white uppercase tracking-wider">Crea Articolo Editoriale Originale</h5>
+                          <button 
+                            type="button"
+                            onClick={() => setShowNewEditorialForm(false)}
+                            className="text-[10px] text-zinc-500 hover:text-white uppercase font-bold tracking-widest"
+                          >
+                            Annulla
+                          </button>
+                        </div>
+
+                        {/* Generazione IA Assistita con Gemini */}
+                        <div className="p-4 bg-neon-blue/5 border border-neon-blue/20 rounded-2xl space-y-3">
+                          <div className="flex items-center gap-2 text-neon-blue">
+                            <Brain size={16} className="animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-widest">Generatore Editoriali Gemini AI</span>
+                          </div>
+                          <p className="text-[10px] text-zinc-400">
+                            Seleziona una notizia calda dal feed RSS di GamesPulse per far scrivere a Gemini un articolo originale completo ed approfondito di 800+ parole in italiano!
+                          </p>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <select
+                              value={selectedRssForEditorial}
+                              onChange={(e) => setSelectedRssForEditorial(e.target.value)}
+                              className="flex-1 bg-zinc-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 focus:outline-none"
+                            >
+                              <option value="">-- Seleziona una notizia RSS --</option>
+                              {news.filter(n => !n.isEditorial).slice(0, 30).map(n => (
+                                <option key={n.id} value={n.id}>{n.source}: {n.title.substring(0, 50)}...</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={handleGenerateEditorial}
+                              disabled={isGeneratingEditorial}
+                              className="px-4 py-2 bg-neon-blue hover:bg-neon-blue/80 disabled:opacity-50 text-black rounded-xl font-bold text-xs uppercase tracking-widest shrink-0 transition-all flex items-center justify-center gap-2"
+                            >
+                              {isGeneratingEditorial ? "Generazione..." : "Scrivi con Gemini"}
+                              <Sparkles size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Titolo */}
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Titolo Editoriale</label>
+                          <input
+                            type="text"
+                            value={editorialTitle}
+                            onChange={(e) => setEditorialTitle(e.target.value)}
+                            placeholder="Inserisci un titolo accattivante..."
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neon-blue"
+                            required
+                          />
+                        </div>
+
+                        {/* Categoria e Immagine */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Categoria</label>
+                            <select
+                              value={editorialCategory}
+                              onChange={(e) => setEditorialCategory(e.target.value)}
+                              className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neon-blue"
+                            >
+                              <option value="playstation">PlayStation</option>
+                              <option value="xbox">Xbox</option>
+                              <option value="nintendo">Nintendo</option>
+                              <option value="pc">PC</option>
+                              <option value="tech">Tech</option>
+                              <option value="mobile">Mobile</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest">URL Immagine</label>
+                            <input
+                              type="text"
+                              value={editorialImage}
+                              onChange={(e) => setEditorialImage(e.target.value)}
+                              placeholder="URL immagine copertina (opzionale)..."
+                              className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neon-blue"
+                            />
+                          </div>
+                        </div>
+
+                        {/* AI Summary Card */}
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Quick AI Summary (Una frase da visualizzare nella card)</label>
+                          <textarea
+                            value={editorialAiSummary}
+                            onChange={(e) => setEditorialAiSummary(e.target.value)}
+                            placeholder="Una frase riassuntiva di massimo 25 parole..."
+                            rows={2}
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neon-blue resize-none"
+                            required
+                          />
+                        </div>
+
+                        {/* Contenuto dell'articolo */}
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Contenuto Editoriale (Supporta Markdown)</label>
+                          <textarea
+                            value={editorialContent}
+                            onChange={(e) => setEditorialContent(e.target.value)}
+                            placeholder="Scrivi qui l'articolo di approfondimento (almeno 800 parole)..."
+                            rows={12}
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-neon-blue custom-scrollbar"
+                            required
+                          />
+                        </div>
+
+                        {/* Azioni Form */}
+                        <div className="flex gap-3 pt-3 border-t border-white/5 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowNewEditorialForm(false)}
+                            className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors"
+                          >
+                            Annulla
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isPublishingEditorial}
+                            className="px-6 py-2.5 bg-neon-blue hover:bg-neon-blue/80 disabled:opacity-50 text-black rounded-xl font-bold text-xs uppercase tracking-widest transition-colors"
+                          >
+                            {isPublishingEditorial ? "Pubblicazione..." : "Pubblica Editoriale"}
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="text-xs font-bold text-white uppercase tracking-wider">Editoriali Originali Pubblicati</h5>
+                            <p className="text-[10px] text-zinc-500">I tuoi contenuti esclusivi conformi alle linee guida Google AdSense</p>
+                          </div>
+                          <button 
+                            onClick={() => setShowNewEditorialForm(true)}
+                            className="px-4 py-2 bg-neon-blue text-black rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-neon-blue/80 transition-colors"
+                          >
+                            + Scrivi Nuovo Editoriale
+                          </button>
+                        </div>
+
+                        {/* Lista Editoriali */}
+                        <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                          {news.filter(n => n.isEditorial).length === 0 ? (
+                            <div className="text-center py-10 border border-dashed border-white/10 rounded-2xl bg-zinc-900/10">
+                              <p className="text-xs text-zinc-500">Nessun articolo editoriale originale pubblicato finora.</p>
+                              <button 
+                                onClick={() => setShowNewEditorialForm(true)}
+                                className="mt-3 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-colors border border-white/10"
+                              >
+                                Scrivi Ora il Primo Articolo
+                              </button>
+                            </div>
+                          ) : (
+                            news.filter(n => n.isEditorial).map(item => (
+                              <div key={item.id} className="p-3 bg-zinc-900/40 border border-white/5 rounded-xl flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                  {item.image && (
+                                    <img 
+                                      src={item.image} 
+                                      alt="" 
+                                      className="w-10 h-10 rounded-lg object-cover bg-zinc-950 shrink-0" 
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  )}
+                                  <div className="overflow-hidden">
+                                    <p className="text-xs font-bold text-white truncate">{item.title}</p>
+                                    <p className="text-[9px] text-zinc-500">
+                                      Categoria: <span className="text-neon-blue uppercase">{item.category}</span> • Pubblicato il {new Date(item.pubDate).toLocaleDateString("it-IT")}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <a 
+                                    href={`/article/${item.slug}`} 
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/80 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors border border-white/5"
+                                  >
+                                    Vedi
+                                  </a>
+                                  <button
+                                    onClick={() => handleDeleteEditorial(item.id)}
+                                    className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors border border-red-500/10"
+                                  >
+                                    Elimina
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
